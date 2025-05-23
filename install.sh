@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Komodo Codex Environment - One-Line Installer with FVM
-# Usage: curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh | bash
-# Or: bash <(curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh)
+# Usage: curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh | bash
+# Or: bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh)
 # This script installs FVM (Flutter Version Management) for better Flutter version control
 
 set -uo pipefail
@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Configuration
-REPO_URL="https://github.com/KomodoPlatform/komodo-codex-env.git"
+REPO_URL="https://github.com/takenagain/komodo-codex-env.git"
 INSTALL_DIR="${HOME}/.komodo-codex-env"
 PYTHON_MIN_VERSION="3.11"
 REQUIRED_PYTHON_VERSION="3.13"
