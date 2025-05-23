@@ -5,7 +5,8 @@
 # Or: bash <(curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh)
 # This script installs FVM (Flutter Version Management) for better Flutter version control
 
-set -euo pipefail
+set -uo pipefail
+# Note: removed 'e' from set options to prevent immediate exit on error
 
 # Colors and formatting
 RED='\033[0;31m'
@@ -22,12 +23,17 @@ INSTALL_DIR="${HOME}/.komodo-codex-env"
 PYTHON_MIN_VERSION="3.11"
 REQUIRED_PYTHON_VERSION="3.13"
 ALLOW_ROOT=false
+DEBUG=false
 
 # Parse command line arguments
 for arg in "$@"; do
     case "$arg" in
         --allow-root)
             ALLOW_ROOT=true
+            ;;
+        --debug)
+            DEBUG=true
+            set -x  # Enable bash debug mode
             ;;
     esac
 done
@@ -49,9 +55,43 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+log_debug() {
+    if [[ "$DEBUG" = true ]]; then
+        echo -e "${YELLOW}[DEBUG]${NC} $1"
+    fi
+}
+
 log_step() {
     echo -e "\n${CYAN}${BOLD}=== $1 ===${NC}"
 }
+
+# Error handling
+handle_error() {
+    local exit_code=$?
+    local line_no=$1
+    log_error "Installation failed at line ${line_no} with exit code ${exit_code}"
+    log_error "Last command: $(fc -ln -1)"
+    
+    if [[ "$DEBUG" = true ]]; then
+        # Print stack trace in debug mode
+        local i=0
+        local stack_size=${#FUNCNAME[@]}
+        log_error "Stack trace:"
+        for ((i=1; i<stack_size; i++)); do
+            local func="${FUNCNAME[$i]}"
+            local line="${BASH_LINENO[$((i-1))]}"
+            local src="${BASH_SOURCE[$i]}"
+            log_error "  at ${func}() in ${src}:${line}"
+        done
+    fi
+    
+    log_info "For more detailed debugging information, run with --debug flag"
+    log_info "To run as root, use the --allow-root flag"
+    
+    exit $exit_code
+}
+
+trap 'handle_error $LINENO' ERR
 
 # Utility functions
 command_exists() {
@@ -97,123 +137,108 @@ is_version_greater_equal() {
     [[ "$(version_compare "$1" "$2")" == "$2" ]]
 }
 
+# Run a command with error handling
+run_command() {
+    local cmd=$1
+    local error_msg=$2
+    
+    log_debug "Running command: $cmd"
+    local output
+    if ! output=$(eval "$cmd" 2>&1); then
+        log_error "$error_msg"
+        log_error "Command output: $output"
+        return 1
+    fi
+    return 0
+}
+
 # System dependency installation
 install_system_deps() {
     local os=$(get_os)
     local distro=$(get_distro)
     
     log_step "Installing System Dependencies"
+    log_info "Detected OS: $os, Distribution: $distro, Architecture: $(get_arch)"
     
     case "$os" in
         "macos")
             if ! command_exists brew; then
                 log_info "Installing Homebrew..."
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                
-                # Add brew to PATH for current session
-                if [[ -f /opt/homebrew/bin/brew ]]; then
-                    eval "$(/opt/homebrew/bin/brew shellenv)"
-                elif [[ -f /usr/local/bin/brew ]]; then
-                    eval "$(/usr/local/bin/brew shellenv)"
+                if ! run_command "/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"" "Failed to install Homebrew"; then
+                    log_warn "Continuing without Homebrew. Some dependencies may be missing."
+                else
+                    # Add brew to PATH for current session
+                    if [[ -f /opt/homebrew/bin/brew ]]; then
+                        eval "$(/opt/homebrew/bin/brew shellenv)"
+                    elif [[ -f /usr/local/bin/brew ]]; then
+                        eval "$(/usr/local/bin/brew shellenv)"
+                    fi
                 fi
             fi
             
             log_info "Installing macOS dependencies..."
-            brew update
-            brew install curl git unzip xz zip python@${REQUIRED_PYTHON_VERSION} dart || true
+            run_command "brew update" "Failed to update Homebrew" || true
+            run_command "brew install curl git unzip xz zip" "Failed to install core dependencies" || true
+            run_command "brew install python@${REQUIRED_PYTHON_VERSION}" "Failed to install Python ${REQUIRED_PYTHON_VERSION}" || true
+            run_command "brew install dart" "Failed to install Dart" || true
             ;;
             
         "linux")
             case "$distro" in
                 "ubuntu"|"debian")
                     log_info "Installing Ubuntu/Debian dependencies..."
-                    sudo apt-get update -qq
-                    sudo apt-get install -y \
-                        curl \
-                        git \
-                        unzip \
-                        xz-utils \
-                        zip \
-                        libglu1-mesa \
-                        software-properties-common \
-                        build-essential \
-                        libssl-dev \
-                        libffi-dev \
-                        libbz2-dev \
-                        libreadline-dev \
-                        libsqlite3-dev \
-                        wget \
-                        llvm \
-                        libncurses5-dev \
-                        libncursesw5-dev \
-                        tk-dev \
-                        libxml2-dev \
-                        libxmlsec1-dev \
-                        liblzma-dev
+                    if ! run_command "sudo apt-get update -qq" "Failed to update apt repositories"; then
+                        log_warn "APT update failed. Continuing with installation..."
+                    fi
+                    
+                    # Install core dependencies
+                    log_info "Installing core dependencies..."
+                    run_command "sudo apt-get install -y curl git unzip xz-utils zip build-essential wget" "Failed to install core dependencies" || true
+                    
+                    # Install additional dependencies
+                    log_info "Installing additional dependencies..."
+                    run_command "sudo apt-get install -y libglu1-mesa software-properties-common libssl-dev libffi-dev libbz2-dev libreadline-dev libsqlite3-dev llvm libncurses5-dev libncursesw5-dev tk-dev libxml2-dev libxmlsec1-dev liblzma-dev" "Failed to install additional dependencies" || true
                     
                     # Try to install Python 3.13 from deadsnakes PPA
                     if ! command_exists python${REQUIRED_PYTHON_VERSION}; then
                         log_info "Adding deadsnakes PPA for Python ${REQUIRED_PYTHON_VERSION}..."
-                        sudo add-apt-repository -y ppa:deadsnakes/ppa || true
-                        sudo apt-get update -qq
-                        sudo apt-get install -y python${REQUIRED_PYTHON_VERSION} python${REQUIRED_PYTHON_VERSION}-dev python${REQUIRED_PYTHON_VERSION}-venv || true
+                        run_command "sudo add-apt-repository -y ppa:deadsnakes/ppa" "Failed to add deadsnakes PPA" || true
+                        run_command "sudo apt-get update -qq" "Failed to update apt after adding PPA" || true
+                        run_command "sudo apt-get install -y python${REQUIRED_PYTHON_VERSION} python${REQUIRED_PYTHON_VERSION}-dev python${REQUIRED_PYTHON_VERSION}-venv python${REQUIRED_PYTHON_VERSION}-distutils" "Failed to install Python ${REQUIRED_PYTHON_VERSION}" || true
                     fi
                     
                     # Install Dart SDK for FVM
                     if ! command_exists dart; then
                         log_info "Installing Dart SDK..."
-                        sudo apt-get install -y dart || true
+                        run_command "sudo apt-get install -y apt-transport-https" "Failed to install apt-transport-https" || true
+                        run_command "wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -" "Failed to add Google's signing key" || true
+                        run_command "sudo sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list'" "Failed to add Dart repository" || true
+                        run_command "sudo apt-get update" "Failed to update apt after adding Dart repository" || true
+                        run_command "sudo apt-get install -y dart" "Failed to install Dart" || true
                     fi
                     ;;
                     
                 "fedora"|"rhel"|"centos")
                     log_info "Installing Fedora/RHEL dependencies..."
-                    sudo dnf install -y \
-                        curl \
-                        git \
-                        unzip \
-                        xz \
-                        zip \
-                        mesa-libGLU \
-                        gcc \
-                        openssl-devel \
-                        bzip2-devel \
-                        libffi-devel \
-                        readline-devel \
-                        sqlite-devel \
-                        wget \
-                        llvm \
-                        ncurses-devel \
-                        tk-devel \
-                        libxml2-devel \
-                        xmlsec1-devel \
-                        xz-devel \
-                        dart || true
+                    run_command "sudo dnf install -y curl git unzip xz zip mesa-libGLU gcc openssl-devel bzip2-devel libffi-devel readline-devel sqlite-devel wget llvm ncurses-devel tk-devel libxml2-devel xmlsec1-devel xz-devel" "Failed to install dependencies" || true
+                    
+                    # Add Dart repository and install Dart
+                    if ! command_exists dart; then
+                        log_info "Installing Dart SDK..."
+                        run_command "sudo dnf install -y gnupg2" "Failed to install gnupg2" || true
+                        run_command "sudo dnf install -y dart" "Failed to install Dart" || true
+                    fi
                     ;;
                     
                 "arch"|"manjaro")
                     log_info "Installing Arch dependencies..."
-                    sudo pacman -Sy --noconfirm \
-                        curl \
-                        git \
-                        unzip \
-                        xz \
-                        zip \
-                        glu \
-                        base-devel \
-                        openssl \
-                        bzip2 \
-                        libffi \
-                        readline \
-                        sqlite \
-                        wget \
-                        llvm \
-                        ncurses \
-                        tk \
-                        libxml2 \
-                        xmlsec \
-                        xz \
-                        dart || true
+                    run_command "sudo pacman -Sy --noconfirm curl git unzip xz zip glu base-devel openssl bzip2 libffi readline sqlite wget llvm ncurses tk libxml2 xmlsec xz" "Failed to install dependencies" || true
+                    
+                    # Install Dart
+                    if ! command_exists dart; then
+                        log_info "Installing Dart SDK..."
+                        run_command "sudo pacman -Sy --noconfirm dart" "Failed to install Dart" || true
+                    fi
                     ;;
                     
                 *)
@@ -226,11 +251,22 @@ install_system_deps() {
             
         *)
             log_error "Unsupported operating system: $os"
-            exit 1
+            return 1
             ;;
     esac
     
+    # Verify essential tools are available
+    for tool in curl git unzip; do
+        if ! command_exists "$tool"; then
+            log_error "Essential tool '$tool' is not available. Installation cannot continue."
+            return 1
+        else
+            log_debug "Found essential tool: $tool at $(which $tool)"
+        fi
+    done
+    
     log_success "System dependencies installed"
+    return 0
 }
 
 # Python installation and verification
@@ -241,40 +277,111 @@ setup_python() {
     local python_cmd=""
     local python_version=""
     
+    log_info "Checking for existing Python installation..."
     # Try different Python commands
-    for cmd in python${REQUIRED_PYTHON_VERSION} python3 python; do
+    for cmd in python${REQUIRED_PYTHON_VERSION} python3.11 python3.10 python3.9 python3 python; do
         if command_exists "$cmd"; then
-            python_version=$($cmd --version 2>&1 | cut -d' ' -f2)
-            if is_version_greater_equal "$python_version" "$PYTHON_MIN_VERSION"; then
-                python_cmd="$cmd"
-                break
+            log_debug "Found Python command: $cmd"
+            if python_version=$($cmd --version 2>&1 | cut -d' ' -f2); then
+                log_debug "Python version: $python_version"
+                if is_version_greater_equal "$python_version" "$PYTHON_MIN_VERSION"; then
+                    python_cmd="$cmd"
+                    log_debug "Selected Python command: $python_cmd (version $python_version)"
+                    break
+                else
+                    log_debug "Python version $python_version is too old (need >= $PYTHON_MIN_VERSION)"
+                fi
+            else
+                log_debug "Failed to get version for $cmd"
             fi
         fi
     done
     
     if [[ -z "$python_cmd" ]]; then
-        log_error "Python ${PYTHON_MIN_VERSION}+ not found. Attempting to install..."
+        log_warn "Python ${PYTHON_MIN_VERSION}+ not found. Attempting to install..."
         
         # Try pyenv installation as fallback
         if ! command_exists pyenv; then
             log_info "Installing pyenv..."
-            curl https://pyenv.run | bash
+            if ! run_command "curl https://pyenv.run | bash" "Failed to install pyenv"; then
+                log_error "Pyenv installation failed. Please install Python ${PYTHON_MIN_VERSION}+ manually."
+                log_info "You can try: sudo apt-get install python3.9 python3.9-venv python3.9-dev"
+                log_info "Or visit https://www.python.org/downloads/ for installation instructions."
+                return 1
+            fi
             
             # Add pyenv to PATH
             export PYENV_ROOT="$HOME/.pyenv"
             [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-            eval "$(pyenv init -)"
+            
+            if ! command_exists pyenv; then
+                log_error "Pyenv installation succeeded but command not found. Please restart your shell and run the installer again."
+                return 1
+            fi
+            
+            if ! run_command "eval \"\$(pyenv init -)\"" "Failed to initialize pyenv"; then
+                log_error "Pyenv initialization failed."
+                return 1
+            fi
         fi
         
         log_info "Installing Python ${REQUIRED_PYTHON_VERSION} via pyenv..."
-        pyenv install ${REQUIRED_PYTHON_VERSION}
-        pyenv global ${REQUIRED_PYTHON_VERSION}
-        python_cmd="python"
-        python_version=${REQUIRED_PYTHON_VERSION}
+        if ! run_command "pyenv install ${REQUIRED_PYTHON_VERSION}" "Failed to install Python ${REQUIRED_PYTHON_VERSION}"; then
+            log_error "Python installation failed. Attempting fallback to Python 3.9..."
+            if ! run_command "pyenv install 3.9.0" "Failed to install Python 3.9.0"; then
+                log_error "All Python installation attempts failed."
+                return 1
+            else
+                REQUIRED_PYTHON_VERSION="3.9.0"
+                run_command "pyenv global 3.9.0" "Failed to set global Python version to 3.9.0" || true
+            fi
+        else
+            run_command "pyenv global ${REQUIRED_PYTHON_VERSION}" "Failed to set global Python version to ${REQUIRED_PYTHON_VERSION}" || true
+        fi
+        
+        # Try to use the installed python
+        if command_exists pyenv; then
+            python_cmd="$(pyenv which python)"
+            if [[ -z "$python_cmd" ]]; then
+                python_cmd="python"  # Fallback
+            fi
+            python_version="${REQUIRED_PYTHON_VERSION}"
+        else
+            log_error "Pyenv or Python installation failed."
+            return 1
+        fi
+    fi
+    
+    # Verify Python installation
+    if ! command_exists "$python_cmd"; then
+        log_error "Python command '$python_cmd' not found after installation."
+        return 1
+    fi
+    
+    # Check Python version
+    if ! python_version=$("$python_cmd" --version 2>&1 | cut -d' ' -f2); then
+        log_error "Failed to get Python version."
+        return 1
+    fi
+    
+    # Ensure pip is available
+    log_info "Checking for pip..."
+    if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
+        log_info "Installing pip..."
+        if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
+            log_error "Failed to download pip installer."
+            return 1
+        fi
+        if ! run_command "$python_cmd get-pip.py" "Failed to install pip"; then
+            log_error "Pip installation failed."
+            return 1
+        fi
+        rm -f get-pip.py
     fi
     
     log_success "Python ${python_version} available at: $(which $python_cmd)"
     echo "export KOMODO_PYTHON_CMD=$python_cmd" > "${INSTALL_DIR}/.python_config"
+    return 0
 }
 
 # UV package manager installation
@@ -283,21 +390,56 @@ install_uv() {
     
     if command_exists uv; then
         log_info "UV already installed: $(uv --version)"
-        return
+        return 0
     fi
     
     log_info "Installing UV..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    if ! run_command "curl -LsSf https://astral.sh/uv/install.sh | sh" "Failed to install UV"; then
+        log_error "UV installation failed. Attempting fallback to pip..."
+        
+        # Ensure we have Python and pip
+        if ! command_exists python3 && ! command_exists python; then
+            log_error "No Python installation found. Cannot install dependencies."
+            return 1
+        fi
+        
+        local python_cmd="python3"
+        if ! command_exists python3; then
+            python_cmd="python"
+        fi
+        
+        # Ensure pip is available
+        if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
+            log_info "Installing pip..."
+            if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && $python_cmd get-pip.py" "Failed to install pip"; then
+                log_error "Pip installation failed."
+                return 1
+            fi
+            rm -f get-pip.py
+        fi
+        
+        # Install uv using pip
+        log_info "Installing UV using pip..."
+        if ! run_command "$python_cmd -m pip install uv" "Failed to install UV with pip"; then
+            log_error "All UV installation methods failed."
+            log_info "Please install UV manually: https://github.com/astral-sh/uv"
+            return 1
+        fi
+    fi
     
     # Add UV to current PATH
     export PATH="$HOME/.local/bin:$PATH"
     
+    # Check if uv is available
     if ! command_exists uv; then
-        log_error "UV installation failed"
-        exit 1
+        log_error "UV installation appeared to succeed but command not found."
+        log_info "Please check that ~/.local/bin is in your PATH and try again."
+        log_info "You can add it with: export PATH=\"$HOME/.local/bin:\$PATH\""
+        return 1
     fi
     
     log_success "UV installed: $(uv --version)"
+    return 0
 }
 
 # Git configuration
@@ -306,7 +448,7 @@ setup_git() {
     
     if ! command_exists git; then
         log_error "Git not found after installation"
-        exit 1
+        return 1
     fi
     
     # Set basic git configuration if not set
@@ -321,6 +463,7 @@ setup_git() {
     fi
     
     log_success "Git configured"
+    return 0
 }
 
 # Project setup
@@ -335,21 +478,66 @@ setup_project() {
     
     # Clone repository
     log_info "Cloning repository..."
-    git clone "$REPO_URL" "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    if ! run_command "git clone \"$REPO_URL\" \"$INSTALL_DIR\"" "Failed to clone repository"; then
+        log_error "Repository cloning failed."
+        return 1
+    fi
+    
+    cd "$INSTALL_DIR" || {
+        log_error "Failed to change directory to $INSTALL_DIR"
+        return 1
+    }
     
     # Install Python dependencies with UV
     log_info "Installing Python dependencies..."
-    uv sync --dev
+    if ! run_command "uv sync --dev" "Failed to install Python dependencies"; then
+        log_warn "UV dependency installation failed. Attempting fallback with pip..."
+        
+        # Get Python command from config
+        local python_cmd=""
+        if [[ -f "${INSTALL_DIR}/.python_config" ]]; then
+            source "${INSTALL_DIR}/.python_config"
+            python_cmd="$KOMODO_PYTHON_CMD"
+        else
+            python_cmd="python3"
+            if ! command_exists python3; then
+                python_cmd="python"
+            fi
+        fi
+        
+        # Create and activate virtual environment
+        log_info "Creating virtual environment..."
+        if ! run_command "$python_cmd -m venv .venv" "Failed to create virtual environment"; then
+            log_error "Virtual environment creation failed."
+            return 1
+        fi
+        
+        # Activate virtual environment
+        source .venv/bin/activate || {
+            log_error "Failed to activate virtual environment."
+            return 1
+        }
+        
+        # Install dependencies with pip
+        log_info "Installing dependencies with pip..."
+        if ! run_command "pip install -e ." "Failed to install dependencies with pip"; then
+            log_error "Dependency installation failed."
+            return 1
+        fi
+    fi
     
     # Verify installation
     log_info "Verifying installation..."
-    if uv run komodo-codex-env --version >/dev/null 2>&1; then
+    if command_exists uv && run_command "uv run komodo-codex-env --version >/dev/null 2>&1" "Verification command failed"; then
         log_success "Installation verified successfully"
+    elif [[ -d .venv ]] && run_command "source .venv/bin/activate && python -m komodo_codex_env.cli --version >/dev/null 2>&1" "Verification command failed"; then
+        log_success "Installation verified successfully (using venv)"
     else
         log_error "Installation verification failed"
-        exit 1
+        return 1
     fi
+    
+    return 0
 }
 
 # Shell integration
@@ -398,14 +586,24 @@ if [[ -f "$HOME/.komodo-codex-env/.python_config" ]]; then
     source "$HOME/.komodo-codex-env/.python_config"
 fi
 
+# Virtual environment
+if [[ -d "$HOME/.komodo-codex-env/.venv" ]]; then
+    source "$HOME/.komodo-codex-env/.venv/bin/activate"
+fi
+
 # Komodo Codex Environment aliases
-alias komodo-codex-env="cd $HOME/.komodo-codex-env && PYTHONPATH=src uv run python -m komodo_codex_env.cli"
+if command -v uv >/dev/null 2>&1; then
+    alias komodo-codex-env="cd $HOME/.komodo-codex-env && PYTHONPATH=src uv run python -m komodo_codex_env.cli"
+else
+    alias komodo-codex-env="cd $HOME/.komodo-codex-env && PYTHONPATH=src python -m komodo_codex_env.cli"
+fi
+
 alias kce="komodo-codex-env"
 alias kce-setup="komodo-codex-env setup"
 alias kce-status="komodo-codex-env flutter-status"
 alias kce-docs="komodo-codex-env fetch-docs"
 alias kce-deps="komodo-codex-env check-deps"
-alias kce-update="cd $HOME/.komodo-codex-env && git pull && uv sync"
+alias kce-update="cd $HOME/.komodo-codex-env && git pull && (uv sync --dev || pip install -e .)"
 
 # FVM Flutter aliases (after setup)
 alias kce-fvm-list="komodo-codex-env fvm-list"
@@ -453,6 +651,7 @@ EOF
     
     # Make setup script executable
     chmod +x "$setup_script"
+    return 0
 }
 
 # Create non-root user for installation
@@ -464,17 +663,20 @@ create_non_root_user() {
     # Check if user already exists
     if id "$username" &>/dev/null; then
         log_info "User $username already exists, skipping creation"
-        return
+        return 0
     fi
     
     log_info "Creating user $username..."
-    useradd -m -s /bin/bash "$username"
+    if ! run_command "useradd -m -s /bin/bash \"$username\"" "Failed to create user $username"; then
+        log_error "User creation failed."
+        return 1
+    fi
     
     # Add user to sudo group if it exists
     if getent group sudo >/dev/null; then
-        usermod -aG sudo "$username"
+        run_command "usermod -aG sudo \"$username\"" "Failed to add user to sudo group" || true
     elif getent group wheel >/dev/null; then
-        usermod -aG wheel "$username"
+        run_command "usermod -aG wheel \"$username\"" "Failed to add user to wheel group" || true
     fi
     
     # Allow passwordless sudo
@@ -482,6 +684,7 @@ create_non_root_user() {
     chmod 0440 /etc/sudoers.d/$username
     
     log_success "User $username created"
+    return 0
 }
 
 # Main installation function
@@ -496,7 +699,7 @@ main() {
             log_warn "Running as root with --allow-root flag"
         else
             log_error "This script should not be run as root"
-            log_info "You can use --allow-root to bypass this check"
+            log_info "You can use --allow-root to bypass this check or create a non-root user"
             exit 1
         fi
     fi
@@ -504,56 +707,74 @@ main() {
     # Create install directory
     mkdir -p "$INSTALL_DIR"
     
-    # Run installation steps
-    install_system_deps
-    setup_python
-    install_uv
-    setup_git
-    setup_project
-    setup_shell_integration
+    # Track installation steps for resume capability
+    local install_steps=(
+        "install_system_deps"
+        "setup_python"
+        "install_uv"
+        "setup_git"
+        "setup_project"
+        "setup_shell_integration"
+    )
     
-    log_step "Installation Complete!"
-    log_success "Komodo Codex Environment has been installed successfully!"
+    # Run installation steps with error handling
+    local failed_step=""
+    for step in "${install_steps[@]}"; do
+        log_info "Running step: $step"
+        if ! $step; then
+            failed_step="$step"
+            log_error "Step $step failed. Installation may be incomplete."
+            break
+        fi
+    done
     
-    echo ""
-    log_info "Quick start:"
-    log_info "1. Restart your terminal or run: source ~/.$(basename $SHELL)rc"
-    log_info "2. Run full setup: kce-full-setup"
-    log_info "3. Check status: kce-status"
-    echo ""
-    log_info "Available commands:"
-    log_info "  kce                 - Run komodo-codex-env"
-    log_info "  kce-setup          - Run basic setup"
-    log_info "  kce-full-setup     - Run setup with all options enabled (with FVM)"
-    log_info "  kce-status         - Check Flutter status"
-    log_info "  kce-docs           - Fetch documentation"
-    log_info "  kce-deps           - Check dependencies"
-    log_info "  kce-update         - Update the tool"
-    log_info ""
-    log_info "FVM Flutter commands:"
-    log_info "  kce-fvm-list       - List installed Flutter versions"
-    log_info "  kce-fvm-install    - Install Flutter version"
-    log_info "  kce-fvm-use        - Switch Flutter version"
-    log_info "  kce-fvm-releases   - List available Flutter releases"
-    log_info "  flutter / dart     - Use FVM Flutter/Dart (after setup)"
-    echo ""
-    log_info "For help: kce --help"
-    
-    # Offer to run setup immediately
-    echo ""
-    read -p "Would you like to run the full setup now? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Running full setup..."
-        source "${INSTALL_DIR}/setup_env.sh"
-        kce-full-setup
+    if [[ -n "$failed_step" ]]; then
+        log_step "Installation Failed"
+        log_error "Installation failed at step: $failed_step"
+        log_info "You may need to fix the issues and try again."
+        log_info "For debugging, run with: bash $0 --debug"
+        exit 1
     else
-        log_info "You can run the setup later with: kce-full-setup"
+        log_step "Installation Complete!"
+        log_success "Komodo Codex Environment has been installed successfully!"
+        
+        echo ""
+        log_info "Quick start:"
+        log_info "1. Restart your terminal or run: source ~/.$(basename $SHELL)rc"
+        log_info "2. Run full setup: kce-full-setup"
+        log_info "3. Check status: kce-status"
+        echo ""
+        log_info "Available commands:"
+        log_info "  kce                 - Run komodo-codex-env"
+        log_info "  kce-setup          - Run basic setup"
+        log_info "  kce-full-setup     - Run setup with all options enabled (with FVM)"
+        log_info "  kce-status         - Check Flutter status"
+        log_info "  kce-docs           - Fetch documentation"
+        log_info "  kce-deps           - Check dependencies"
+        log_info "  kce-update         - Update the tool"
+        log_info ""
+        log_info "FVM Flutter commands:"
+        log_info "  kce-fvm-list       - List installed Flutter versions"
+        log_info "  kce-fvm-install    - Install Flutter version"
+        log_info "  kce-fvm-use        - Switch Flutter version"
+        log_info "  kce-fvm-releases   - List available Flutter releases"
+        log_info "  flutter / dart     - Use FVM Flutter/Dart (after setup)"
+        echo ""
+        log_info "For help: kce --help"
+        
+        # Offer to run setup immediately
+        echo ""
+        read -p "Would you like to run the full setup now? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Running full setup..."
+            source "${INSTALL_DIR}/setup_env.sh"
+            kce-full-setup
+        else
+            log_info "You can run the setup later with: kce-full-setup"
+        fi
     fi
 }
-
-# Trap to cleanup on error
-trap 'log_error "Installation failed. Check the output above for errors."' ERR
 
 # Run main function
 main "$@"
