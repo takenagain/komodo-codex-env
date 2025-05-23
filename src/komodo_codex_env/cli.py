@@ -179,34 +179,49 @@ def check_deps():
 @cli.command()
 @click.option("--version", help="Flutter version to check/install")
 def flutter_status(version):
-    """Check Flutter installation status."""
+    """Check Flutter installation status via FVM."""
     
     config = EnvironmentConfig.from_environment()
     executor = CommandExecutor()
     dep_manager = DependencyManager(executor)
     flutter_manager = FlutterManager(config, executor, dep_manager)
     
-    console.print("[blue]Flutter Installation Status[/blue]")
+    console.print("[blue]Flutter Installation Status (via FVM)[/blue]")
     
-    # Check if Flutter is installed
+    # Check if FVM is installed
+    if not flutter_manager.is_fvm_installed():
+        console.print("[red]✗ FVM is not installed[/red]")
+        console.print("Run 'setup' command to install FVM and Flutter.")
+        return
+    
+    console.print("[green]✓ FVM is installed[/green]")
+    
+    # Check if Flutter is installed via FVM
     if flutter_manager.is_flutter_installed():
-        console.print("[green]✓ Flutter is installed[/green]")
+        console.print("[green]✓ Flutter is installed via FVM[/green]")
         
         # Get version
         installed_version = flutter_manager.get_installed_version()
         if installed_version:
-            console.print(f"  Installed version: {installed_version}")
+            console.print(f"  Active version: {installed_version}")
         
         # Check if version matches requested
-        if config.flutter_version:
-            requested_version = config.get_flutter_version()
-            if installed_version and installed_version != requested_version:
-                console.print(f"  [yellow]Requested version: {requested_version}[/yellow]")
+        if version:
+            if installed_version and installed_version != version:
+                console.print(f"  [yellow]Requested version: {version}[/yellow]")
+        elif config.flutter_version:
+            if installed_version and installed_version != config.flutter_version:
+                console.print(f"  [yellow]Config version: {config.flutter_version}[/yellow]")
+        
+        # List available versions
+        available_versions = flutter_manager.list_available_versions()
+        if available_versions:
+            console.print(f"  Available versions: {len(available_versions)} total")
         
         # Check Flutter doctor
         console.print("\nRunning Flutter doctor...")
         try:
-            result = executor.run_command("flutter doctor", check=False)
+            result = executor.run_command("fvm flutter doctor", check=False)
             if result.returncode == 0:
                 console.print("[green]✓ Flutter doctor passed[/green]")
             else:
@@ -215,7 +230,7 @@ def flutter_status(version):
             console.print(f"[red]Flutter doctor failed: {e}[/red]")
     
     else:
-        console.print("[red]✗ Flutter is not installed[/red]")
+        console.print("[red]✗ Flutter is not installed via FVM[/red]")
         console.print("Run 'setup' command to install Flutter.")
 
 
@@ -244,6 +259,105 @@ def update_script():
                 console.print("[red]Failed to download update[/red]")
     else:
         console.print("[green]Script is up to date[/green]")
+
+
+@cli.command()
+def fvm_list():
+    """List installed Flutter versions via FVM."""
+    
+    executor = CommandExecutor()
+    dep_manager = DependencyManager(executor)
+    config = EnvironmentConfig.from_environment()
+    flutter_manager = FlutterManager(config, executor, dep_manager)
+    
+    if not flutter_manager.is_fvm_installed():
+        console.print("[red]FVM is not installed[/red]")
+        console.print("Run 'setup' command to install FVM.")
+        return
+    
+    try:
+        result = executor.run_command("fvm list", check=False)
+        if result.returncode == 0:
+            console.print("[blue]Installed Flutter versions:[/blue]")
+            console.print(result.stdout)
+        else:
+            console.print("[yellow]No Flutter versions installed via FVM[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Failed to list FVM versions: {e}[/red]")
+
+
+@cli.command()
+@click.argument("version")
+def fvm_install(version):
+    """Install a specific Flutter version via FVM."""
+    
+    executor = CommandExecutor()
+    dep_manager = DependencyManager(executor)
+    config = EnvironmentConfig.from_environment()
+    flutter_manager = FlutterManager(config, executor, dep_manager)
+    
+    if not flutter_manager.is_fvm_installed():
+        console.print("[red]FVM is not installed[/red]")
+        console.print("Run 'setup' command to install FVM.")
+        return
+    
+    console.print(f"[blue]Installing Flutter {version} via FVM...[/blue]")
+    
+    try:
+        result = executor.run_command(f"fvm install {version}", timeout=600, check=False)
+        if result.returncode == 0:
+            console.print(f"[green]Flutter {version} installed successfully![/green]")
+        else:
+            console.print(f"[red]Failed to install Flutter {version}[/red]")
+    except Exception as e:
+        console.print(f"[red]Installation failed: {e}[/red]")
+
+
+@cli.command()
+@click.argument("version")
+def fvm_use(version):
+    """Set global Flutter version via FVM."""
+    
+    executor = CommandExecutor()
+    dep_manager = DependencyManager(executor)
+    config = EnvironmentConfig.from_environment()
+    flutter_manager = FlutterManager(config, executor, dep_manager)
+    
+    if not flutter_manager.is_fvm_installed():
+        console.print("[red]FVM is not installed[/red]")
+        console.print("Run 'setup' command to install FVM.")
+        return
+    
+    success = flutter_manager.switch_version(version)
+    if success:
+        console.print(f"[green]Now using Flutter {version} globally[/green]")
+    else:
+        console.print(f"[red]Failed to switch to Flutter {version}[/red]")
+
+
+@cli.command()
+def fvm_releases():
+    """List available Flutter releases via FVM."""
+    
+    executor = CommandExecutor()
+    dep_manager = DependencyManager(executor)
+    config = EnvironmentConfig.from_environment()
+    flutter_manager = FlutterManager(config, executor, dep_manager)
+    
+    if not flutter_manager.is_fvm_installed():
+        console.print("[red]FVM is not installed[/red]")
+        console.print("Run 'setup' command to install FVM.")
+        return
+    
+    try:
+        result = executor.run_command("fvm releases", check=False)
+        if result.returncode == 0:
+            console.print("[blue]Available Flutter releases:[/blue]")
+            console.print(result.stdout)
+        else:
+            console.print("[red]Failed to fetch Flutter releases[/red]")
+    except Exception as e:
+        console.print(f"[red]Failed to fetch releases: {e}[/red]")
 
 
 def main():

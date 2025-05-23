@@ -41,6 +41,7 @@ class EnvironmentConfig:
     # Paths
     home_dir: Path = field(default_factory=lambda: Path.home())
     flutter_dir: Optional[Path] = None
+    fvm_dir: Optional[Path] = None
     initial_dir: Optional[Path] = None
     
     def __post_init__(self):
@@ -53,6 +54,9 @@ class EnvironmentConfig:
         
         if self.flutter_dir is None:
             self.flutter_dir = self.home_dir / "flutter"
+        
+        if self.fvm_dir is None:
+            self.fvm_dir = self.home_dir / ".fvm"
         
         if self.initial_dir is None:
             self.initial_dir = Path.cwd()
@@ -69,13 +73,18 @@ class EnvironmentConfig:
     
     @property
     def flutter_bin_dir(self) -> Path:
-        """Get the Flutter bin directory."""
-        return self.flutter_dir / "bin"
+        """Get the Flutter bin directory (via FVM default)."""
+        return self.fvm_dir / "default" / "bin"
     
     @property
     def pub_cache_bin_dir(self) -> Path:
         """Get the pub cache bin directory."""
         return self.home_dir / ".pub-cache" / "bin"
+    
+    @property
+    def fvm_flutter_bin(self) -> Path:
+        """Get the FVM Flutter binary path."""
+        return self.fvm_dir / "default" / "bin" / "flutter"
     
     @classmethod
     def from_environment(cls) -> "EnvironmentConfig":

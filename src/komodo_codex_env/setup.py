@@ -77,7 +77,7 @@ class EnvironmentSetup:
         """Set up system dependencies."""
         console.print("[bold blue]Phase 1: System Dependencies[/bold blue]")
         
-        # Required dependencies
+        # Required dependencies - platform agnostic names
         required_deps = ["curl", "git", "unzip", "xz-utils", "zip"]
         
         # Check system info
@@ -89,7 +89,10 @@ class EnvironmentSetup:
         
         # Add platform-specific dependencies
         if system_info.get("os") == "Linux":
-            required_deps.append("libglu1-mesa")
+            required_deps.extend(["libglu1-mesa", "build-essential"])
+        
+        # Add Dart for FVM
+        required_deps.append("dart")
         
         # Install dependencies
         success = self.dep_manager.install_dependencies(required_deps)
@@ -220,7 +223,7 @@ class EnvironmentSetup:
             # Get dependencies
             console.print("[blue]Getting Flutter dependencies...[/blue]")
             result = self.executor.run_command(
-                "flutter pub get",
+                "fvm flutter pub get",
                 cwd=project_path,
                 check=False
             )
@@ -233,7 +236,7 @@ class EnvironmentSetup:
             # Run build_runner
             console.print("[blue]Running build_runner...[/blue]")
             result = self.executor.run_command(
-                "dart run build_runner build --delete-conflicting-outputs",
+                "fvm dart run build_runner build --delete-conflicting-outputs",
                 cwd=project_path,
                 check=False,
                 timeout=120
@@ -268,8 +271,8 @@ class EnvironmentSetup:
         summary = [
             f"[green]✓ Environment setup completed successfully![/green]",
             f"[blue]Execution time: {elapsed_time:.1f}s ({percentage:.1f}% of max time)[/blue]",
-            f"[blue]Flutter version: {self.config.flutter_version}[/blue]",
-            f"[blue]Installation method: {self.config.flutter_install_method}[/blue]",
+            f"[blue]Flutter version: {self.config.flutter_version} (via FVM)[/blue]",
+            f"[blue]Installation method: FVM[/blue]",
         ]
         
         if self.config.platforms:
@@ -289,7 +292,12 @@ class EnvironmentSetup:
             "Or restart your terminal to apply PATH changes.",
             "",
             "Verify installation with:",
-            "  flutter doctor",
+            "  fvm flutter doctor",
+            "",
+            "FVM commands:",
+            "  fvm list          - List installed Flutter versions",
+            "  fvm global <ver>  - Set global Flutter version",
+            "  fvm use <ver>     - Use Flutter version for current project",
         ]
         
         console.print(Panel.fit(
