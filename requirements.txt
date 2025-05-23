@@ -1,0 +1,6 @@
+click>=8.1.0
+rich>=13.0.0
+requests>=2.31.0
+psutil>=5.9.0
+packaging>=23.0
+pathlib-mate>=1.0.0
