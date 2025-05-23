@@ -21,6 +21,16 @@ REPO_URL="https://github.com/KomodoPlatform/komodo-codex-env.git"
 INSTALL_DIR="${HOME}/.komodo-codex-env"
 PYTHON_MIN_VERSION="3.11"
 REQUIRED_PYTHON_VERSION="3.13"
+ALLOW_ROOT=false
+
+# Parse command line arguments
+for arg in "$@"; do
+    case "$arg" in
+        --allow-root)
+            ALLOW_ROOT=true
+            ;;
+    esac
+done
 
 # Logging functions
 log_info() {
@@ -425,9 +435,8 @@ kce-flutter() {
 kce-dart() {
     fvm dart "$@"
 }
-
 EOF
-
+    
     # Add source line to shell rc if not already there
     local source_line="source \"${setup_script}\""
     if [[ -f "$shell_rc" ]] && ! grep -q "setup_env.sh" "$shell_rc"; then
@@ -446,6 +455,35 @@ EOF
     chmod +x "$setup_script"
 }
 
+# Create non-root user for installation
+create_non_root_user() {
+    log_step "Creating non-root user for installation"
+    
+    local username="komodo"
+    
+    # Check if user already exists
+    if id "$username" &>/dev/null; then
+        log_info "User $username already exists, skipping creation"
+        return
+    fi
+    
+    log_info "Creating user $username..."
+    useradd -m -s /bin/bash "$username"
+    
+    # Add user to sudo group if it exists
+    if getent group sudo >/dev/null; then
+        usermod -aG sudo "$username"
+    elif getent group wheel >/dev/null; then
+        usermod -aG wheel "$username"
+    fi
+    
+    # Allow passwordless sudo
+    echo "$username ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$username
+    chmod 0440 /etc/sudoers.d/$username
+    
+    log_success "User $username created"
+}
+
 # Main installation function
 main() {
     log_step "Komodo Codex Environment Installer"
@@ -454,8 +492,13 @@ main() {
     
     # Check if running as root
     if [[ $EUID -eq 0 ]]; then
-        log_error "This script should not be run as root"
-        exit 1
+        if [[ "$ALLOW_ROOT" = true ]]; then
+            log_warn "Running as root with --allow-root flag"
+        else
+            log_error "This script should not be run as root"
+            log_info "You can use --allow-root to bypass this check"
+            exit 1
+        fi
     fi
     
     # Create install directory
