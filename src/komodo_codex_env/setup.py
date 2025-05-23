@@ -12,6 +12,7 @@ from .executor import CommandExecutor
 from .dependency_manager import DependencyManager
 from .git_manager import GitManager
 from .flutter_manager import FlutterManager
+from .android_manager import AndroidManager
 from .documentation_manager import DocumentationManager
 
 console = Console()
@@ -32,6 +33,7 @@ class EnvironmentSetup:
         self.dep_manager = DependencyManager(self.executor)
         self.git_manager = GitManager(self.executor)
         self.flutter_manager = FlutterManager(config, self.executor, self.dep_manager)
+        self.android_manager = AndroidManager(config, self.executor, self.dep_manager)
         self.doc_manager = DocumentationManager(config, self.executor)
     
     async def run_setup(self) -> bool:
@@ -50,8 +52,8 @@ class EnvironmentSetup:
             # Phase 2: Git operations
             await self._setup_git_operations()
             
-            # Phase 3: Flutter installation
-            if not await self._setup_flutter():
+            # Phase 3: Flutter and Android SDK installation (parallel)
+            if not await self._setup_flutter_and_android():
                 return False
             
             # Phase 4: Environment configuration
@@ -129,10 +131,82 @@ class EnvironmentSetup:
         
         return True
     
-    async def _setup_flutter(self) -> bool:
-        """Set up Flutter SDK."""
-        console.print("[bold blue]Phase 3: Flutter Installation[/bold blue]")
+    async def _setup_flutter_and_android(self) -> bool:
+        """Set up Flutter SDK and Android SDK in parallel."""
+        console.print("[bold blue]Phase 3: Flutter and Android SDK Installation[/bold blue]")
         
+        if self.config.parallel_execution:
+            # Run Flutter and Android setup in parallel
+            tasks = []
+            
+            # Flutter setup task
+            async def setup_flutter():
+                success = self.flutter_manager.install_flutter()
+                if not success:
+                    console.print("[red]✗ Flutter installation failed[/red]")
+                    return False
+                
+                success = self.flutter_manager.configure_flutter()
+                if success:
+                    console.print("[green]✓ Flutter installed and configured[/green]")
+                else:
+                    console.print("[yellow]⚠ Flutter installed but configuration had issues[/yellow]")
+                return True
+            
+            # Android setup task
+            async def setup_android():
+                if not self.config.install_android_sdk:
+                    console.print("[blue]Android SDK installation skipped[/blue]")
+                    return True
+                
+                # Check if android is in platforms list
+                if "android" not in self.config.platforms:
+                    console.print("[blue]Android not in target platforms, skipping SDK installation[/blue]")
+                    return True
+                
+                # Run Android SDK installation in a thread since it's not async
+                import asyncio
+                loop = asyncio.get_event_loop()
+                success = await loop.run_in_executor(None, self.android_manager.install_android_sdk)
+                
+                if success:
+                    console.print("[green]✓ Android SDK installed and configured[/green]")
+                else:
+                    console.print("[yellow]⚠ Android SDK installation had issues[/yellow]")
+                return success
+            
+            tasks.append(setup_flutter())
+            tasks.append(setup_android())
+            
+            # Wait for both tasks to complete
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Check results
+            flutter_success = results[0] if not isinstance(results[0], Exception) else False
+            android_success = results[1] if not isinstance(results[1], Exception) else True  # Default to True if skipped
+            
+            if isinstance(results[0], Exception):
+                console.print(f"[red]Flutter setup failed: {results[0]}[/red]")
+                flutter_success = False
+            
+            if isinstance(results[1], Exception):
+                console.print(f"[yellow]Android setup failed: {results[1]}[/yellow]")
+                android_success = True  # Non-critical failure
+            
+            return flutter_success  # Flutter is critical, Android is optional
+        else:
+            # Sequential execution
+            flutter_success = await self._setup_flutter_sequential()
+            if not flutter_success:
+                return False
+            
+            android_success = await self._setup_android_sequential()
+            # Android failure is not critical
+            
+            return True
+    
+    async def _setup_flutter_sequential(self) -> bool:
+        """Set up Flutter SDK sequentially."""
         # Install Flutter
         success = self.flutter_manager.install_flutter()
         if not success:
@@ -147,6 +221,28 @@ class EnvironmentSetup:
             console.print("[yellow]⚠ Flutter installed but configuration had issues[/yellow]")
         
         return True
+    
+    async def _setup_android_sequential(self) -> bool:
+        """Set up Android SDK sequentially."""
+        if not self.config.install_android_sdk:
+            console.print("[blue]Android SDK installation skipped[/blue]")
+            return True
+        
+        # Check if android is in platforms list
+        if "android" not in self.config.platforms:
+            console.print("[blue]Android not in target platforms, skipping SDK installation[/blue]")
+            return True
+        
+        # Run Android SDK installation
+        import asyncio
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, self.android_manager.install_android_sdk)
+        
+        if success:
+            console.print("[green]✓ Android SDK installed and configured[/green]")
+        else:
+            console.print("[yellow]⚠ Android SDK installation had issues[/yellow]")
+        return success
     
     async def _setup_environment(self) -> bool:
         """Set up environment variables and PATH."""
@@ -278,6 +374,11 @@ class EnvironmentSetup:
         if self.config.platforms:
             summary.append(f"[blue]Configured platforms: {', '.join(self.config.platforms)}[/blue]")
         
+        if self.config.install_android_sdk and "android" in self.config.platforms:
+            android_info = self.android_manager.get_android_info()
+            if android_info.get("status") == "installed":
+                summary.append(f"[blue]Android SDK: {android_info.get('android_home', 'Installed')}[/blue]")
+        
         console.print(Panel.fit(
             "\n".join(summary),
             title="Setup Complete",
@@ -299,6 +400,15 @@ class EnvironmentSetup:
             "  fvm global <ver>  - Set global Flutter version",
             "  fvm use <ver>     - Use Flutter version for current project",
         ]
+        
+        if self.config.install_android_sdk and "android" in self.config.platforms:
+            next_steps.extend([
+                "",
+                "Android development:",
+                "  flutter doctor --android-licenses  - Accept Android licenses",
+                "  flutter devices                    - List available devices",
+                "  flutter emulators                  - List available emulators",
+            ])
         
         console.print(Panel.fit(
             "\n".join(next_steps),

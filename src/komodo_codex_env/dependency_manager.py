@@ -334,6 +334,36 @@ class DependencyManager:
             console.print(f"[red]Failed to update environment variables: {e}[/red]")
             return False
     
+    def add_environment_variable(self, var_name: str, var_value: str, profile_path: Path) -> bool:
+        """Add an environment variable to the shell profile."""
+        try:
+            profile_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Read existing profile content
+            existing_content = ""
+            if profile_path.exists():
+                existing_content = profile_path.read_text()
+            
+            # Check if variable is already set
+            export_line = f'export {var_name}="{var_value}"'
+            var_pattern = f'export {var_name}='
+            
+            if var_pattern in existing_content:
+                console.print(f"[yellow]{var_name} already configured[/yellow]")
+                return True
+            
+            # Add environment variable
+            with profile_path.open("a") as f:
+                f.write(f"\n# Added by Komodo Codex Environment Setup\n")
+                f.write(f"{export_line}\n")
+            
+            console.print(f"[green]Added {var_name} environment variable[/green]")
+            return True
+            
+        except Exception as e:
+            console.print(f"[red]Failed to add environment variable: {e}[/red]")
+            return False
+
     def add_to_path(self, path_entry: str, profile_path: Path) -> bool:
         """Add a directory to PATH in the shell profile."""
         try:

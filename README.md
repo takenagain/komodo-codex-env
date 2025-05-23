@@ -5,8 +5,9 @@ A Python-based replacement for the original bash script to set up Flutter develo
 ## Features
 
 - **FVM Integration**: Uses Flutter Version Management for better Flutter version control
+- **Android SDK Management**: Automated Android SDK installation and configuration for APK building
+- **Parallel Execution**: Efficient dependency management with job scheduling for Flutter and Android SDK setup
 - **Modular Architecture**: Clean separation of concerns with dedicated managers for different components
-- **Parallel Execution**: Efficient dependency management with job scheduling
 - **Cross-Platform**: Supports macOS (brew), Linux (apt/pacman), and other Unix-like systems
 - **Rich Console Output**: Beautiful progress bars and colored output
 - **Async Documentation**: Fast concurrent documentation fetching
@@ -21,6 +22,7 @@ A Python-based replacement for the original bash script to set up Flutter develo
 - `uv` package manager
 - Git
 - FVM (Flutter Version Management) - installed automatically
+- Java 17+ (OpenJDK) - installed automatically for Android development
 
 ### One-Line Installation
 
@@ -43,6 +45,31 @@ uv sync --dev
 PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --verbose
 ```
 
+## Project Structure
+
+```
+komodo-codex-env/
+├── src/komodo_codex_env/           # Main Python package
+│   ├── android_manager.py          # Android SDK management
+│   ├── flutter_manager.py          # Flutter/FVM management
+│   ├── setup.py                    # Main orchestrator
+│   ├── cli.py                      # Command-line interface
+│   └── ...                         # Other core modules
+├── scripts/                        # Standalone scripts and utilities
+│   ├── install_android_sdk.py      # Standalone Android SDK installer
+│   ├── install_android_sdk.sh      # Shell wrapper for installer
+│   ├── test_android_install.py     # Unit tests for Android SDK
+│   ├── test_integration.py         # Integration tests
+│   └── README.md                   # Scripts documentation
+├── docs/                           # Documentation
+│   ├── android/                    # Android-specific documentation
+│   │   ├── ANDROID_SDK_GUIDE.md    # User guide for Android SDK
+│   │   └── ANDROID_SDK_IMPLEMENTATION.md  # Technical details
+│   └── README.md                   # Documentation index
+├── README.md                       # This file
+└── ...                             # Other project files
+```
+
 ## Usage
 
 ### Main Setup Command
@@ -54,8 +81,11 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli setup
 # Setup with custom Flutter version
 PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --flutter-version 3.29.3
 
-# Setup with specific platforms
+# Setup with specific platforms (Android SDK auto-installed if android is included)
 PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android,linux
+
+# Skip Android SDK installation
+PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
 
 # Verbose output
 PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --verbose
@@ -79,6 +109,11 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-install 3.29.3
 PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-use 3.29.3
 PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-releases
 
+# Android SDK management
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+
 # Update script from remote
 PYTHONPATH=src uv run python -m komodo_codex_env.cli update-script
 ```
@@ -93,6 +128,9 @@ export FLUTTER_VERSION=3.32.0
 
 # Platform targets
 export PLATFORMS=web,android,linux
+
+# Android SDK options
+export INSTALL_ANDROID_SDK=true
 
 # Documentation options
 export SHOULD_FETCH_KDF_API_DOCS=true
@@ -110,9 +148,22 @@ export MAX_PARALLEL_JOBS=4
 - `git_manager.py` - Git operations
 - `dependency_manager.py` - System dependencies with platform-aware package mapping
 - `flutter_manager.py` - Flutter SDK management via FVM
+- `android_manager.py` - Android SDK installation and configuration
 - `documentation_manager.py` - Documentation fetching
-- `setup.py` - Main orchestrator
-- `cli.py` - Command-line interface with FVM commands
+- `setup.py` - Main orchestrator with parallel Flutter and Android setup
+- `cli.py` - Command-line interface with FVM and Android commands
+
+### Scripts Directory
+
+- `scripts/install_android_sdk.py` - Standalone Android SDK installer
+- `scripts/install_android_sdk.sh` - Shell wrapper for Android SDK installer
+- `scripts/test_android_install.py` - Unit tests for Android SDK functionality
+- `scripts/test_integration.py` - Integration tests for parallel setup
+
+### Documentation
+
+- `docs/android/ANDROID_SDK_GUIDE.md` - Comprehensive Android SDK usage guide
+- `docs/android/ANDROID_SDK_IMPLEMENTATION.md` - Technical implementation details
 
 ## Advantages over Bash Script
 
@@ -190,6 +241,66 @@ fvm flutter doctor
 fvm flutter create my_app
 fvm flutter pub get
 ```
+
+## Android SDK Installation
+
+The tool includes automated Android SDK installation for APK building:
+
+### Standalone Android SDK Installation
+
+You can install just the Android SDK without the full Flutter setup:
+
+```bash
+# Using the Python script directly
+./scripts/install_android_sdk.py
+
+# Using the shell wrapper script
+./scripts/install_android_sdk.sh
+
+# With custom options
+./scripts/install_android_sdk.sh --skip-java --android-home /custom/path
+```
+
+### Android SDK Features
+
+- **Automatic Java Installation**: Installs OpenJDK 17 if not present
+- **Command Line Tools**: Downloads and installs latest Android SDK command line tools
+- **Essential Packages**: Installs platform-tools, build-tools, Android API levels 33-34
+- **Environment Setup**: Configures ANDROID_HOME and PATH variables
+- **License Management**: Handles Android SDK license acceptance
+- **Cross-Platform**: Supports Linux, macOS, and Windows
+
+### Android Development Workflow
+
+After installation:
+
+```bash
+# Check Android setup
+flutter doctor
+
+# Accept Android licenses (if not done during installation)
+flutter doctor --android-licenses
+
+# List available devices/emulators
+flutter devices
+
+# Build APK
+flutter build apk
+
+# Build app bundle
+flutter build appbundle
+```
+
+### Parallel Installation
+
+When using the main setup command with `android` in platforms, Flutter and Android SDK installation run in parallel for faster setup:
+
+```bash
+# This installs Flutter via FVM and Android SDK simultaneously
+PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android
+```
+
+</edits>
 
 ## License
 

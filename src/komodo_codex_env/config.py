@@ -26,6 +26,11 @@ class EnvironmentConfig:
     flutter_install_method: str = "precompiled"  # "git" or "precompiled"
     platforms: List[str] = field(default_factory=lambda: ["web"])
     
+    # Android configuration
+    install_android_sdk: bool = True
+    android_api_level: str = "34"
+    android_build_tools_version: str = "34.0.0"
+    
     # Git configuration
     fetch_all_remote_branches: bool = True
     remote_base_url: str = "https://github.com/KomodoPlatform"
@@ -42,6 +47,7 @@ class EnvironmentConfig:
     home_dir: Path = field(default_factory=lambda: Path.home())
     flutter_dir: Optional[Path] = None
     fvm_dir: Optional[Path] = None
+    android_home: Optional[Path] = None
     initial_dir: Optional[Path] = None
     
     def __post_init__(self):
@@ -60,6 +66,9 @@ class EnvironmentConfig:
         
         if self.initial_dir is None:
             self.initial_dir = Path.cwd()
+        
+        if self.android_home is None:
+            self.android_home = self.home_dir / "Android" / "Sdk"
     
     @property
     def script_gist_url(self) -> str:
@@ -99,6 +108,7 @@ class EnvironmentConfig:
         config.fetch_all_remote_branches = os.getenv("FETCH_ALL_REMOTE_BRANCHES", "true").lower() == "true"
         config.should_fetch_agents_docs = os.getenv("SHOULD_FETCH_AGENTS_DOCS", "true").lower() == "true"
         config.should_fetch_kdf_api_docs = os.getenv("SHOULD_FETCH_KDF_API_DOCS", "false").lower() == "true"
+        config.install_android_sdk = os.getenv("INSTALL_ANDROID_SDK", "true").lower() == "true"
         
         # Handle platforms
         platforms_env = os.getenv("PLATFORMS")
