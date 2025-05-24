@@ -1,3 +1,4 @@
+from sys import exit
 """Main setup orchestrator that coordinates all components."""
 
 import asyncio
@@ -28,7 +29,7 @@ class EnvironmentSetup:
         # Initialize components
         self.executor = CommandExecutor(
             parallel_execution=config.parallel_execution,
-            max_workers=config.max_parallel_jobs
+            max_workers=config.max_parallel_jobs if config.max_parallel_jobs else 4
         )
         self.dep_manager = DependencyManager(self.executor)
         self.git_manager = GitManager(self.executor)
@@ -115,11 +116,6 @@ class EnvironmentSetup:
         console.print(f"[blue]Repository: {repo_name}[/blue]")
 
         if self.config.fetch_all_remote_branches:
-            # Set up remote
-            remote_url = f"{self.config.remote_base_url}/{repo_name}.git"
-            self.git_manager.add_remote("origin", remote_url)
-
-            # Fetch all branches
             success = self.git_manager.fetch_all_branches()
             if success:
                 console.print("[green]✓ Git branches fetched[/green]")
@@ -190,7 +186,7 @@ class EnvironmentSetup:
                 console.print(f"[yellow]Android setup failed: {results[1]}[/yellow]")
                 android_success = True  # Non-critical failure
 
-            return flutter_success  # Flutter is critical, Android is optional
+            return flutter_success == True  # noqa: E712
         else:
             # Sequential execution
             flutter_success = await self._setup_flutter_sequential()
@@ -281,7 +277,9 @@ class EnvironmentSetup:
 
             # Save documentation
             target_dir = self.config.initial_dir
-            success = self.doc_manager.save_documentation(documents, target_dir)
+            success = False
+            if target_dir and target_dir.exists():
+                success = self.doc_manager.save_documentation(documents, target_dir)
 
             if success:
                 # Create combined documentation

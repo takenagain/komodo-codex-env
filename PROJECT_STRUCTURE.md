@@ -31,6 +31,7 @@ komodo-codex-env/
 │   ├── install_android_sdk.sh          # Shell wrapper for installer
 │   ├── test_android_install.py         # Android SDK unit tests
 │   └── test_integration.py             # Integration tests
+│   └── run_setup.sh                    # Setup execution script
 ├── docs/                               # Documentation
 │   ├── README.md                       # Documentation index
 │   ├── android/                        # Android-specific documentation

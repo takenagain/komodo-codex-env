@@ -191,9 +191,9 @@ install_system_deps() {
                         log_warn "APT update failed. Continuing with installation..."
                     fi
                     
-                    # Install core dependencies (minimal set for install script and Python)
+                    # Install core dependencies (minimal set for install script and Python, plus essential tools)
                     log_info "Installing core dependencies..."
-                    run_command "sudo apt-get install -y wget python3-pip python3-full" "Failed to install core dependencies" || true
+                    run_command "sudo apt-get install -y wget python3-pip python3-full unzip curl git" "Failed to install core dependencies" || true
                     
                     # Install Python development dependencies
                     log_info "Installing Python development dependencies..."
@@ -213,16 +213,16 @@ install_system_deps() {
                     
                 "fedora"|"rhel"|"centos")
                     log_info "Installing Fedora/RHEL dependencies..."
-                    # Install Python and development dependencies
-                    run_command "sudo dnf install -y python3-pip python3-devel wget gcc openssl-devel bzip2-devel libffi-devel readline-devel sqlite-devel llvm ncurses-devel tk-devel libxml2-devel xmlsec1-devel xz-devel" "Failed to install dependencies" || true
+                    # Install Python and development dependencies, plus essential tools
+                    run_command "sudo dnf install -y python3-pip python3-devel wget unzip curl git gcc openssl-devel bzip2-devel libffi-devel readline-devel sqlite-devel llvm ncurses-devel tk-devel libxml2-devel xmlsec1-devel xz-devel" "Failed to install dependencies" || true
                     
                     # Note: curl, git, unzip, xz, zip, mesa-libGLU, and dart are now handled by the Python CLI program
                     ;;
                     
                 "arch"|"manjaro")
                     log_info "Installing Arch dependencies..."
-                    # Install Python and development dependencies
-                    run_command "sudo pacman -Sy --noconfirm python-pip python-setuptools wget base-devel openssl bzip2 libffi readline sqlite llvm ncurses tk libxml2 xmlsec xz" "Failed to install dependencies" || true
+                    # Install Python and development dependencies, plus essential tools
+                    run_command "sudo pacman -Sy --noconfirm python-pip python-setuptools wget unzip curl git base-devel openssl bzip2 libffi readline sqlite llvm ncurses tk libxml2 xmlsec xz" "Failed to install dependencies" || true
                     
                     # Note: curl, git, unzip, xz, zip, glu, and dart are now handled by the Python CLI program
                     ;;
