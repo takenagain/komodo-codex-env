@@ -54,7 +54,6 @@ komodo-codex-env/
 ├── pyproject.toml                      # Python project configuration
 ├── requirements-dev.txt                # Development dependencies
 ├── requirements.txt                    # Runtime dependencies
-├── run_setup.sh                        # Setup execution script
 └── uv.lock                            # UV package lock file
 ```
 

@@ -188,7 +188,7 @@ class DockerInstallTest(unittest.TestCase):
         cmd = [
             'docker', 'exec', '-u', 'testuser', container_id,
             'bash', '-c',
-            'cd /home/testuser/.komodo-codex-env && uv run komodo-codex-env --version'
+            'cd /home/testuser/.komodo-codex-env && export PATH="$HOME/.local/bin:$PATH" && uv run komodo-codex-env --version'
         ]
         
         result = subprocess.run(cmd, capture_output=True, text=True)

@@ -33,7 +33,6 @@ class DependencyManager:
                 "zip": "zip",
                 "libglu1-mesa": "libglu1-mesa",
                 "build-essential": "build-essential",
-                "dart": "dart",
             },
             "brew": {
                 "curl": "curl",
@@ -53,7 +52,6 @@ class DependencyManager:
                 "zip": "zip",
                 "libglu1-mesa": "glu",
                 "build-essential": "base-devel",
-                "dart": "dart",
             }
         }
     

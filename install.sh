@@ -191,13 +191,13 @@ install_system_deps() {
                         log_warn "APT update failed. Continuing with installation..."
                     fi
                     
-                    # Install core dependencies
+                    # Install core dependencies (minimal set for install script and Python)
                     log_info "Installing core dependencies..."
-                    run_command "sudo apt-get install -y curl git unzip xz-utils zip build-essential wget python3-pip python3-full" "Failed to install core dependencies" || true
+                    run_command "sudo apt-get install -y wget python3-pip python3-full" "Failed to install core dependencies" || true
                     
-                    # Install additional dependencies
-                    log_info "Installing additional dependencies..."
-                    run_command "sudo apt-get install -y libglu1-mesa software-properties-common libssl-dev libffi-dev libbz2-dev libreadline-dev libsqlite3-dev llvm libncurses5-dev libncursesw5-dev tk-dev libxml2-dev libxmlsec1-dev liblzma-dev" "Failed to install additional dependencies" || true
+                    # Install Python development dependencies
+                    log_info "Installing Python development dependencies..."
+                    run_command "sudo apt-get install -y software-properties-common libssl-dev libffi-dev libbz2-dev libreadline-dev libsqlite3-dev llvm libncurses5-dev libncursesw5-dev tk-dev libxml2-dev libxmlsec1-dev liblzma-dev" "Failed to install Python development dependencies" || true
                     
                     # Try to install Python 3.13 from deadsnakes PPA
                     if ! command_exists python${REQUIRED_PYTHON_VERSION}; then
@@ -207,44 +207,31 @@ install_system_deps() {
                         run_command "sudo apt-get install -y python${REQUIRED_PYTHON_VERSION} python${REQUIRED_PYTHON_VERSION}-dev python${REQUIRED_PYTHON_VERSION}-venv python${REQUIRED_PYTHON_VERSION}-distutils" "Failed to install Python ${REQUIRED_PYTHON_VERSION}" || true
                     fi
                     
-                    # Install Dart SDK for FVM
-                    if ! command_exists dart; then
-                        log_info "Installing Dart SDK..."
-                        run_command "sudo apt-get install -y apt-transport-https" "Failed to install apt-transport-https" || true
-                        run_command "wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -" "Failed to add Google's signing key" || true
-                        run_command "sudo sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list'" "Failed to add Dart repository" || true
-                        run_command "sudo apt-get update" "Failed to update apt after adding Dart repository" || true
-                        run_command "sudo apt-get install -y dart" "Failed to install Dart" || true
-                    fi
+                    # Note: Dart SDK and other system dependencies (curl, git, unzip, etc.) 
+                    # are now handled by the Python CLI program for better consistency
                     ;;
                     
                 "fedora"|"rhel"|"centos")
                     log_info "Installing Fedora/RHEL dependencies..."
-                    run_command "sudo dnf install -y curl git unzip xz zip mesa-libGLU gcc openssl-devel bzip2-devel libffi-devel readline-devel sqlite-devel wget llvm ncurses-devel tk-devel libxml2-devel xmlsec1-devel xz-devel" "Failed to install dependencies" || true
+                    # Install Python and development dependencies
+                    run_command "sudo dnf install -y python3-pip python3-devel wget gcc openssl-devel bzip2-devel libffi-devel readline-devel sqlite-devel llvm ncurses-devel tk-devel libxml2-devel xmlsec1-devel xz-devel" "Failed to install dependencies" || true
                     
-                    # Add Dart repository and install Dart
-                    if ! command_exists dart; then
-                        log_info "Installing Dart SDK..."
-                        run_command "sudo dnf install -y gnupg2" "Failed to install gnupg2" || true
-                        run_command "sudo dnf install -y dart" "Failed to install Dart" || true
-                    fi
+                    # Note: curl, git, unzip, xz, zip, mesa-libGLU, and dart are now handled by the Python CLI program
                     ;;
                     
                 "arch"|"manjaro")
                     log_info "Installing Arch dependencies..."
-                    run_command "sudo pacman -Sy --noconfirm curl git unzip xz zip glu base-devel openssl bzip2 libffi readline sqlite wget llvm ncurses tk libxml2 xmlsec xz" "Failed to install dependencies" || true
+                    # Install Python and development dependencies
+                    run_command "sudo pacman -Sy --noconfirm python-pip python-setuptools wget base-devel openssl bzip2 libffi readline sqlite llvm ncurses tk libxml2 xmlsec xz" "Failed to install dependencies" || true
                     
-                    # Install Dart
-                    if ! command_exists dart; then
-                        log_info "Installing Dart SDK..."
-                        run_command "sudo pacman -Sy --noconfirm dart" "Failed to install Dart" || true
-                    fi
+                    # Note: curl, git, unzip, xz, zip, glu, and dart are now handled by the Python CLI program
                     ;;
                     
                 *)
                     log_warn "Unknown Linux distribution: $distro"
                     log_warn "Please ensure the following packages are installed:"
-                    log_warn "curl, git, unzip, xz-utils, zip, libglu1-mesa, build tools, dart"
+                    log_warn "python3-pip, python3-dev, wget, and basic development tools"
+                    log_warn "Other dependencies (curl, git, unzip, etc.) will be handled by the Python CLI program"
                     ;;
             esac
             ;;
