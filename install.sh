@@ -700,6 +700,16 @@ if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
+# Add pub-cache bin to PATH for FVM
+if [[ -d "$HOME/.pub-cache/bin" ]] && [[ ":$PATH:" != *":$HOME/.pub-cache/bin:"* ]]; then
+    export PATH="$PATH:$HOME/.pub-cache/bin"
+fi
+
+# Add FVM default Flutter to PATH if it exists
+if [[ -d "$HOME/.fvm/default/bin" ]] && [[ ":$PATH:" != *":$HOME/.fvm/default/bin:"* ]]; then
+    export PATH="$PATH:$HOME/.fvm/default/bin"
+fi
+
 # Add pyenv to PATH if it exists
 if [[ -d "$HOME/.pyenv/bin" ]]; then
     export PATH="$HOME/.pyenv/bin:$PATH"
@@ -779,6 +789,106 @@ EOF
     return 0
 }
 
+# Install FVM (Flutter Version Management) for the specified user
+install_fvm_for_user() {
+    local target_user="${1:-$USER}"
+    local user_home="${2:-$HOME}"
+    
+    log_info "Installing FVM for user: $target_user"
+    
+    # Check if FVM is already installed for this user
+    if sudo -u "$target_user" bash -c "command -v fvm >/dev/null 2>&1"; then
+        log_info "FVM already installed for user $target_user"
+        return 0
+    fi
+    
+    # Ensure .pub-cache/bin directory exists
+    local pub_cache_bin="$user_home/.pub-cache/bin"
+    sudo -u "$target_user" mkdir -p "$pub_cache_bin"
+    
+    # Try different installation methods
+    local installed=false
+    
+    # Method 1: Try with existing Dart/Flutter if available
+    if sudo -u "$target_user" bash -c "command -v dart >/dev/null 2>&1"; then
+        log_info "Installing FVM via dart pub global activate..."
+        if sudo -u "$target_user" bash -c "dart pub global activate fvm" 2>/dev/null; then
+            installed=true
+        fi
+    elif sudo -u "$target_user" bash -c "command -v flutter >/dev/null 2>&1"; then
+        log_info "Installing FVM via flutter pub global activate..."
+        if sudo -u "$target_user" bash -c "flutter pub global activate fvm" 2>/dev/null; then
+            installed=true
+        fi
+    fi
+    
+    # Method 2: Install Flutter bootstrap first, then FVM
+    if [[ "$installed" = false ]]; then
+        log_info "Installing Flutter bootstrap for FVM installation..."
+        local bootstrap_dir="$user_home/.flutter_bootstrap"
+        
+        # Remove existing bootstrap if present
+        sudo -u "$target_user" rm -rf "$bootstrap_dir"
+        
+        # Clone Flutter
+        if sudo -u "$target_user" git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$bootstrap_dir" 2>/dev/null; then
+            # Initialize Flutter
+            sudo -u "$target_user" bash -c "cd '$bootstrap_dir' && bin/flutter doctor" >/dev/null 2>&1 || true
+            
+            # Install FVM
+            if sudo -u "$target_user" bash -c "cd '$bootstrap_dir' && bin/dart pub global activate fvm" 2>/dev/null; then
+                installed=true
+                # Clean up bootstrap
+                sudo -u "$target_user" rm -rf "$bootstrap_dir"
+            fi
+        fi
+    fi
+    
+    if [[ "$installed" = true ]]; then
+        # Add pub-cache/bin to PATH in user's shell profile
+        local shell_profiles=("$user_home/.bashrc" "$user_home/.zshrc" "$user_home/.profile")
+        local path_line='export PATH="$PATH:$HOME/.pub-cache/bin"'
+        
+        for profile in "${shell_profiles[@]}"; do
+            if [[ -f "$profile" ]] && ! grep -q ".pub-cache/bin" "$profile"; then
+                echo "" | sudo -u "$target_user" tee -a "$profile" >/dev/null
+                echo "# Added by Komodo Codex Environment - FVM support" | sudo -u "$target_user" tee -a "$profile" >/dev/null
+                echo "$path_line" | sudo -u "$target_user" tee -a "$profile" >/dev/null
+            fi
+        done
+        
+        log_success "FVM installed successfully for user $target_user"
+        return 0
+    else
+        log_warn "FVM installation failed for user $target_user - will be installed later via Python setup"
+        return 0  # Don't fail the entire installation
+    fi
+}
+
+# Install FVM for both komodo user and root user
+install_fvm() {
+    log_step "Installing FVM (Flutter Version Management)"
+    
+    # Install FVM for current user
+    install_fvm_for_user "$USER" "$HOME"
+    
+    # If running as root or with root privileges, also install for komodo user
+    if [[ $EUID -eq 0 ]] || sudo -n true 2>/dev/null; then
+        if id "komodo" &>/dev/null; then
+            local komodo_home
+            komodo_home=$(eval echo "~komodo")
+            install_fvm_for_user "komodo" "$komodo_home"
+        fi
+        
+        # If allow-root flag is set and we're root, ensure FVM is available for root too
+        if [[ "$ALLOW_ROOT" = true ]] && [[ $EUID -eq 0 ]]; then
+            install_fvm_for_user "root" "/root"
+        fi
+    fi
+    
+    return 0
+}
+
 # Create non-root user for installation
 create_non_root_user() {
     log_step "Creating non-root user for installation"
@@ -837,6 +947,7 @@ main() {
         "install_system_deps"
         "setup_python"
         "install_uv"
+        "install_fvm"
         "setup_git"
         "setup_project"
         "setup_shell_integration"
@@ -886,6 +997,12 @@ main() {
         log_info "  flutter / dart     - Use FVM Flutter/Dart (after setup)"
         echo ""
         log_info "For help: kce --help"
+        
+        # FVM verification note
+        echo ""
+        log_info "Note: FVM (Flutter Version Management) has been installed for all users."
+        log_info "To verify FVM installation: python3 ~/.komodo-codex-env/scripts/verify_fvm.py"
+        log_info "If FVM is not found, restart your terminal and run the setup."
         
         # Offer to run setup immediately
         echo ""

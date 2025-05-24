@@ -244,20 +244,18 @@ class EnvironmentSetup:
         profile_path = self.config.get_shell_profile()
         console.print(f"[blue]Shell profile: {profile_path}[/blue]")
 
-        # Add Flutter to PATH
-        flutter_bin_success = self.dep_manager.add_to_path(
-            str(self.config.flutter_bin_dir),
-            profile_path
+        # Add Flutter to PATH for all users
+        flutter_bin_success = self.dep_manager.add_to_path_for_multiple_users(
+            str(self.config.flutter_bin_dir)
         )
 
-        # Add pub cache to PATH
-        pub_cache_success = self.dep_manager.add_to_path(
-            str(self.config.pub_cache_bin_dir),
-            profile_path
+        # Add pub cache to PATH for all users
+        pub_cache_success = self.dep_manager.add_to_path_for_multiple_users(
+            str(self.config.pub_cache_bin_dir)
         )
 
         if flutter_bin_success and pub_cache_success:
-            console.print("[green]✓ Environment variables configured[/green]")
+            console.print("[green]✓ Environment variables configured for all users[/green]")
         else:
             console.print("[yellow]⚠ Environment configuration had issues[/yellow]")
 

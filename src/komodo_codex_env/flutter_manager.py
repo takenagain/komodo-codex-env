@@ -27,7 +27,29 @@ class FlutterManager:
         
     def is_fvm_installed(self) -> bool:
         """Check if FVM is installed."""
-        return self.executor.check_command_exists("fvm")
+        # First check if fvm is in PATH
+        if self.executor.check_command_exists("fvm"):
+            return True
+        
+        # Check common FVM installation locations
+        common_paths = [
+            self.config.home_dir / ".pub-cache" / "bin" / "fvm",
+            Path("/root/.pub-cache/bin/fvm"),
+            Path("/home/komodo/.pub-cache/bin/fvm"),
+            self.config.home_dir / ".fvm" / "fvm",
+        ]
+        
+        for fvm_path in common_paths:
+            if fvm_path.exists() and fvm_path.is_file():
+                # Add to PATH temporarily for this session
+                import os
+                pub_cache_bin = str(fvm_path.parent)
+                current_path = os.environ.get("PATH", "")
+                if pub_cache_bin not in current_path:
+                    os.environ["PATH"] = f"{current_path}:{pub_cache_bin}"
+                return True
+        
+        return False
     
     def install_fvm(self) -> bool:
         """Install FVM using various methods."""
@@ -86,15 +108,11 @@ class FlutterManager:
                 )
             
             if result.returncode == 0:
-                # Add pub cache to PATH
-                pub_cache_bin = self.config.pub_cache_bin_dir
-                self.dep_manager.add_to_path(str(pub_cache_bin), self.config.get_shell_profile())
-                
+                # Add pub cache to PATH for both current user and common locations
+                self._add_fvm_to_path()
+            
                 # Reload PATH for current session
-                import os
-                current_path = os.environ.get("PATH", "")
-                if str(pub_cache_bin) not in current_path:
-                    os.environ["PATH"] = f"{pub_cache_bin}:{current_path}"
+                self._update_session_path()
                 
                 console.print("[green]FVM installed successfully via pub global![/green]")
                 return True
@@ -105,6 +123,30 @@ class FlutterManager:
         except Exception as e:
             console.print(f"[red]FVM installation failed: {e}[/red]")
             return False
+    
+    def _add_fvm_to_path(self) -> None:
+        """Add FVM paths to shell profiles for all relevant users."""
+        pub_cache_bin = self.config.pub_cache_bin_dir
+        
+        # Use the new multi-user PATH addition method
+        self.dep_manager.add_to_path_for_multiple_users(str(pub_cache_bin))
+    
+    def _update_session_path(self) -> None:
+        """Update PATH for current session with FVM locations."""
+        import os
+        current_path = os.environ.get("PATH", "")
+        
+        # Common FVM installation paths
+        fvm_paths = [
+            str(self.config.pub_cache_bin_dir),
+            "/root/.pub-cache/bin",
+            "/home/komodo/.pub-cache/bin",
+        ]
+        
+        for fvm_path in fvm_paths:
+            if Path(fvm_path).exists() and fvm_path not in current_path:
+                os.environ["PATH"] = f"{current_path}:{fvm_path}"
+                current_path = os.environ["PATH"]
     
     def _install_flutter_bootstrap(self, bootstrap_dir: Path) -> bool:
         """Install a minimal Flutter bootstrap for FVM installation."""
@@ -348,16 +390,16 @@ class FlutterManager:
             return False
     
     def _setup_fvm_path(self) -> bool:
-        """Set up FVM Flutter in PATH."""
+        """Set up FVM Flutter in PATH for all users."""
         try:
-            # Add FVM default bin to PATH
+            # Add FVM default bin to PATH for all users
             fvm_default_bin = self.fvm_home / "default" / "bin"
             if fvm_default_bin.exists():
-                self.dep_manager.add_to_path(str(fvm_default_bin), self.config.get_shell_profile())
+                self.dep_manager.add_to_path_for_multiple_users(str(fvm_default_bin))
             
-            # Also add pub cache bin to PATH if not already there
+            # Also add pub cache bin to PATH for all users if not already there
             pub_cache_bin = self.config.pub_cache_bin_dir
-            self.dep_manager.add_to_path(str(pub_cache_bin), self.config.get_shell_profile())
+            self.dep_manager.add_to_path_for_multiple_users(str(pub_cache_bin))
             
             return True
             

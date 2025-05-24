@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from rich.console import Console
 
 from .executor import CommandExecutor
+from .config import EnvironmentConfig
 
 console = Console()
 
@@ -392,6 +393,47 @@ class DependencyManager:
             
         except Exception as e:
             console.print(f"[red]Failed to add to PATH: {e}[/red]")
+            return False
+    
+    def add_to_path_for_multiple_users(self, path_entry: str) -> bool:
+        """Add a directory to PATH for komodo user, root user, and current user."""
+        success_count = 0
+        total_attempts = 0
+        
+        # Common user profiles to update
+        user_profiles = [
+            # Current user
+            (EnvironmentConfig.from_environment().get_shell_profile(), "current user"),
+            # Komodo user
+            (Path("/home/komodo/.bashrc"), "komodo user (.bashrc)"),
+            (Path("/home/komodo/.zshrc"), "komodo user (.zshrc)"),
+            (Path("/home/komodo/.profile"), "komodo user (.profile)"),
+            # Root user
+            (Path("/root/.bashrc"), "root user (.bashrc)"),
+            (Path("/root/.zshrc"), "root user (.zshrc)"),
+            (Path("/root/.profile"), "root user (.profile)"),
+        ]
+        
+        for profile_path, user_desc in user_profiles:
+            # Skip if user home directory doesn't exist
+            if not profile_path.parent.exists():
+                continue
+                
+            total_attempts += 1
+            try:
+                if self.add_to_path(path_entry, profile_path):
+                    success_count += 1
+                    console.print(f"[green]✓ Added to PATH for {user_desc}[/green]")
+                else:
+                    console.print(f"[yellow]⚠ Failed to add to PATH for {user_desc}[/yellow]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not update PATH for {user_desc}: {e}[/yellow]")
+        
+        if success_count > 0:
+            console.print(f"[green]Successfully updated PATH for {success_count}/{total_attempts} user profiles[/green]")
+            return True
+        else:
+            console.print(f"[red]Failed to update PATH for any user profiles[/red]")
             return False
     
     def _handle_pacman(self, packages: List[str]) -> bool:
