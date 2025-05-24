@@ -193,7 +193,7 @@ install_system_deps() {
                     
                     # Install core dependencies
                     log_info "Installing core dependencies..."
-                    run_command "sudo apt-get install -y curl git unzip xz-utils zip build-essential wget" "Failed to install core dependencies" || true
+                    run_command "sudo apt-get install -y curl git unzip xz-utils zip build-essential wget python3-pip python3-full" "Failed to install core dependencies" || true
                     
                     # Install additional dependencies
                     log_info "Installing additional dependencies..."
@@ -367,16 +367,66 @@ setup_python() {
     # Ensure pip is available
     log_info "Checking for pip..."
     if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
-        log_info "Installing pip..."
-        if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
-            log_error "Failed to download pip installer."
-            return 1
-        fi
-        if ! run_command "$python_cmd get-pip.py" "Failed to install pip"; then
-            log_error "Pip installation failed."
-            return 1
-        fi
-        rm -f get-pip.py
+        log_info "Installing pip via system package manager..."
+        local os=$(get_os)
+        local distro=$(get_distro)
+        
+        case "$os" in
+            "linux")
+                case "$distro" in
+                    "ubuntu"|"debian")
+                        if ! run_command "sudo apt-get install -y python3-pip" "Failed to install pip via apt"; then
+                            log_warn "Failed to install pip via apt, trying get-pip.py as fallback..."
+                            if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
+                                log_error "Failed to download pip installer."
+                                return 1
+                            fi
+                            if ! run_command "$python_cmd get-pip.py --break-system-packages" "Failed to install pip"; then
+                                log_error "Pip installation failed."
+                                return 1
+                            fi
+                            rm -f get-pip.py
+                        fi
+                        ;;
+                    "fedora"|"rhel"|"centos")
+                        if ! run_command "sudo dnf install -y python3-pip" "Failed to install pip via dnf"; then
+                            log_error "Pip installation failed."
+                            return 1
+                        fi
+                        ;;
+                    "arch"|"manjaro")
+                        if ! run_command "sudo pacman -Sy --noconfirm python-pip" "Failed to install pip via pacman"; then
+                            log_error "Pip installation failed."
+                            return 1
+                        fi
+                        ;;
+                    *)
+                        log_warn "Unknown Linux distribution, trying get-pip.py..."
+                        if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
+                            log_error "Failed to download pip installer."
+                            return 1
+                        fi
+                        if ! run_command "$python_cmd get-pip.py --break-system-packages" "Failed to install pip"; then
+                            log_error "Pip installation failed."
+                            return 1
+                        fi
+                        rm -f get-pip.py
+                        ;;
+                esac
+                ;;
+            "macos")
+                log_warn "macOS detected, trying get-pip.py..."
+                if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
+                    log_error "Failed to download pip installer."
+                    return 1
+                fi
+                if ! run_command "$python_cmd get-pip.py" "Failed to install pip"; then
+                    log_error "Pip installation failed."
+                    return 1
+                fi
+                rm -f get-pip.py
+                ;;
+        esac
     fi
     
     log_success "Python ${python_version} available at: $(which $python_cmd)"
@@ -410,20 +460,51 @@ install_uv() {
         
         # Ensure pip is available
         if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
-            log_info "Installing pip..."
-            if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && $python_cmd get-pip.py" "Failed to install pip"; then
-                log_error "Pip installation failed."
-                return 1
+            log_info "Installing pip via system package manager..."
+            local os=$(get_os)
+            local distro=$(get_distro)
+            
+            case "$os" in
+                "linux")
+                    case "$distro" in
+                        "ubuntu"|"debian")
+                            run_command "sudo apt-get install -y python3-pip" "Failed to install pip via apt" || true
+                            ;;
+                        "fedora"|"rhel"|"centos")
+                            run_command "sudo dnf install -y python3-pip" "Failed to install pip via dnf" || true
+                            ;;
+                        "arch"|"manjaro")
+                            run_command "sudo pacman -Sy --noconfirm python-pip" "Failed to install pip via pacman" || true
+                            ;;
+                    esac
+                    ;;
+            esac
+            
+            # If system pip installation failed, try get-pip.py with --break-system-packages
+            if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
+                log_info "System pip installation failed, trying get-pip.py..."
+                if ! run_command "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py" "Failed to download pip installer"; then
+                    log_error "Failed to download pip installer."
+                    return 1
+                fi
+                if ! run_command "$python_cmd get-pip.py --break-system-packages" "Failed to install pip"; then
+                    log_error "Pip installation failed."
+                    return 1
+                fi
+                rm -f get-pip.py
             fi
-            rm -f get-pip.py
         fi
         
         # Install uv using pip
         log_info "Installing UV using pip..."
-        if ! run_command "$python_cmd -m pip install uv" "Failed to install UV with pip"; then
-            log_error "All UV installation methods failed."
-            log_info "Please install UV manually: https://github.com/astral-sh/uv"
-            return 1
+        if ! run_command "$python_cmd -m pip install --user uv" "Failed to install UV with pip"; then
+            # Try with --break-system-packages if user install fails
+            log_info "User pip install failed, trying with --break-system-packages..."
+            if ! run_command "$python_cmd -m pip install --break-system-packages uv" "Failed to install UV with pip (break-system-packages)"; then
+                log_error "All UV installation methods failed."
+                log_info "Please install UV manually: https://github.com/astral-sh/uv"
+                return 1
+            fi
         fi
     fi
     

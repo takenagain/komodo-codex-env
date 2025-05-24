@@ -51,7 +51,6 @@ komodo-codex-env/
 ├── PROJECT_STRUCTURE.md               # This file
 ├── README.md                           # Main project README
 ├── install.sh                          # Main installation script
-├── main.py                             # Simple entry point
 ├── pyproject.toml                      # Python project configuration
 ├── requirements-dev.txt                # Development dependencies
 ├── requirements.txt                    # Runtime dependencies
@@ -108,6 +107,18 @@ komodo-codex-env/
   - Platform filtering logic
   - Error handling and propagation
   - Configuration management
+
+- **`test-install.sh`** - Docker-based install script testing
+  - Clean environment testing
+  - Root and non-root user scenarios
+  - Multi-platform container support
+  - Automated verification and cleanup
+
+- **`test/test_docker_install.py`** - Python unit tests for Docker installation
+  - Containerized installation testing
+  - UV entry point verification
+  - Cross-platform installation validation
+  - Automated Docker container management
 
 ## Documentation (docs/)
 
