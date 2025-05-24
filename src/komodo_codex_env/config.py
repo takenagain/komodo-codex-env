@@ -33,7 +33,7 @@ class EnvironmentConfig:
     
     # Git configuration
     fetch_all_remote_branches: bool = True
-    remote_base_url: str = "https://github.com/takenagain"
+    remote_base_url: str = "https://github.com/KomodoPlatform"
     
     # Documentation fetching
     should_fetch_agents_docs: bool = True
@@ -41,7 +41,7 @@ class EnvironmentConfig:
     
     # URLs
     gist_base_url: str = "https://gist.githubusercontent.com/CharlVS/14233fff7e9b3d66a7268d578cc34b36/raw"
-    kdf_api_docs_url: str = "https://raw.githubusercontent.com/takenagain/komodo-docs-mdx/refs/heads/dev/data-for-gpts/komodefi-api/all-api-content.txt"
+    kdf_api_docs_url: str = "https://raw.githubusercontent.com/KomodoPlatform/komodo-docs-mdx/refs/heads/dev/data-for-gpts/komodefi-api/all-api-content.txt"
     
     # Paths
     home_dir: Path = field(default_factory=lambda: Path.home())

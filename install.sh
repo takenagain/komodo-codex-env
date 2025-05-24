@@ -526,18 +526,75 @@ setup_project() {
         fi
     fi
     
-    # Verify installation
+    # Verify installation with multiple methods
     log_info "Verifying installation..."
-    if command_exists uv && run_command "uv run komodo-codex-env --version >/dev/null 2>&1" "Verification command failed"; then
-        log_success "Installation verified successfully"
-    elif [[ -d .venv ]] && run_command "source .venv/bin/activate && python -m komodo_codex_env.cli --version >/dev/null 2>&1" "Verification command failed"; then
-        log_success "Installation verified successfully (using venv)"
-    else
-        log_error "Installation verification failed"
-        return 1
+    
+    # Method 1: Try uv run with entry point
+    if command_exists uv; then
+        log_debug "Attempting verification with: uv run komodo-codex-env --version"
+        if uv run komodo-codex-env --version >/dev/null 2>&1; then
+            log_success "Installation verified successfully (uv entry point)"
+            return 0
+        else
+            log_debug "Entry point verification failed, trying alternative methods..."
+        fi
     fi
     
-    return 0
+    # Method 2: Try direct module execution with uv
+    if command_exists uv; then
+        log_debug "Attempting verification with: uv run python -m komodo_codex_env.cli --version"
+        if uv run python -m komodo_codex_env.cli --version >/dev/null 2>&1; then
+            log_success "Installation verified successfully (uv module)"
+            return 0
+        else
+            log_debug "UV module verification failed, trying venv activation..."
+        fi
+    fi
+    
+    # Method 3: Try with activated virtual environment
+    if [[ -d .venv ]]; then
+        log_debug "Attempting verification with activated venv"
+        if bash -c "source .venv/bin/activate && python -m komodo_codex_env.cli --version" >/dev/null 2>&1; then
+            log_success "Installation verified successfully (activated venv)"
+            return 0
+        else
+            log_debug "Activated venv verification failed, trying direct path..."
+        fi
+    fi
+    
+    # Method 4: Try direct execution from venv
+    if [[ -f .venv/bin/python ]]; then
+        log_debug "Attempting verification with: .venv/bin/python -m komodo_codex_env.cli --version"
+        if .venv/bin/python -m komodo_codex_env.cli --version >/dev/null 2>&1; then
+            log_success "Installation verified successfully (direct venv)"
+            return 0
+        else
+            log_debug "Direct venv verification failed"
+        fi
+    fi
+    
+    # All methods failed
+    log_error "Installation verification failed with all methods"
+    log_info "Trying to diagnose the issue..."
+    
+    # Diagnostic information
+    if [[ -d .venv ]]; then
+        log_info "Virtual environment exists at: $(pwd)/.venv"
+        if [[ -f .venv/bin/python ]]; then
+            log_info "Python executable found in venv"
+            # Try to show what happens when we run it
+            log_debug "Attempting to run with verbose output..."
+            .venv/bin/python -m komodo_codex_env.cli --version 2>&1 | head -10 | while read line; do
+                log_debug "Output: $line"
+            done
+        else
+            log_error "Python executable not found in venv"
+        fi
+    else
+        log_error "Virtual environment directory not found"
+    fi
+    
+    return 1
 }
 
 # Shell integration

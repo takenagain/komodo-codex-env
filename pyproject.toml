@@ -35,3 +35,6 @@ Issues = "https://github.com/KomodoPlatform/komodo-codex-env/issues"
 
 [project.scripts]
 komodo-codex-env = "komodo_codex_env.cli:main"
+
+[tool.uv]
+package = true
