@@ -3,6 +3,7 @@
 # Komodo Codex Environment - One-Line Installer with FVM
 # Usage: curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh | bash
 # Or: bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh)
+# With custom Flutter version: bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --flutter-version 3.29.3
 # This script installs FVM (Flutter Version Management) for better Flutter version control
 
 set -uo pipefail
@@ -24,16 +25,71 @@ PYTHON_MIN_VERSION="3.11"
 REQUIRED_PYTHON_VERSION="3.13"
 ALLOW_ROOT=false
 DEBUG=false
+FLUTTER_VERSION="3.32.0"
+
+# Help function
+show_help() {
+    echo "Komodo Codex Environment - One-Line Installer with FVM"
+    echo ""
+    echo "Usage:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh | bash"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --flutter-version VERSION    Specify Flutter version to install (default: $FLUTTER_VERSION)"
+    echo "  --allow-root                 Allow installation as root user"
+    echo "  --debug                      Enable debug mode with verbose output"
+    echo "  --help, -h                   Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  # Install with Flutter 3.29.3"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --flutter-version 3.29.3"
+    echo ""
+    echo "  # Install with debug output"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --debug"
+    echo ""
+    echo "This script installs FVM (Flutter Version Management) for better Flutter version control."
+}
 
 # Parse command line arguments
-for arg in "$@"; do
-    case "$arg" in
+while [[ $# -gt 0 ]]; do
+    case $1 in
         --allow-root)
             ALLOW_ROOT=true
+            shift
             ;;
         --debug)
             DEBUG=true
             set -x  # Enable bash debug mode
+            shift
+            ;;
+        --flutter-version)
+            if [[ -n "${2:-}" ]]; then
+                FLUTTER_VERSION="$2"
+                shift 2
+            else
+                echo "Error: --flutter-version requires a version argument"
+                echo "Example: --flutter-version 3.29.3"
+                exit 1
+            fi
+            ;;
+        --flutter-version=*)
+            FLUTTER_VERSION="${1#*=}"
+            if [[ -z "$FLUTTER_VERSION" ]]; then
+                echo "Error: --flutter-version requires a version argument"
+                echo "Example: --flutter-version=3.29.3"
+                exit 1
+            fi
+            shift
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
             ;;
     esac
 done
@@ -750,7 +806,7 @@ alias dart="fvm dart"
 
 # Function for easy setup with all options (uses FVM)
 kce-full-setup() {
-    local flutter_version="${1:-3.32.0}"
+    local flutter_version="${1:-$FLUTTER_VERSION}"
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
         --install-method precompiled \
@@ -791,7 +847,7 @@ EOF
 
 # Install FVM (Flutter Version Management) for the specified user
 install_fvm_for_user() {
-    local target_user="${1:-$USER}"
+    local target_user="${1:-${USER:-$(whoami 2>/dev/null || echo 'root')}}"
     local user_home="${2:-$HOME}"
     
     log_info "Installing FVM for user: $target_user"
@@ -869,8 +925,11 @@ install_fvm_for_user() {
 install_fvm() {
     log_step "Installing FVM (Flutter Version Management)"
     
+    # Get current user, fallback to whoami or default
+    local current_user="${USER:-$(whoami 2>/dev/null || echo 'root')}"
+    
     # Install FVM for current user
-    install_fvm_for_user "$USER" "$HOME"
+    install_fvm_for_user "$current_user" "$HOME"
     
     # If running as root or with root privileges, also install for komodo user
     if [[ $EUID -eq 0 ]] || sudo -n true 2>/dev/null; then
@@ -980,10 +1039,12 @@ main() {
         log_info "2. Run full setup: kce-full-setup"
         log_info "3. Check status: kce-status"
         echo ""
+        log_info "Installation completed successfully!"
+        log_info ""
         log_info "Available commands:"
         log_info "  kce                 - Run komodo-codex-env"
         log_info "  kce-setup          - Run basic setup"
-        log_info "  kce-full-setup     - Run setup with all options enabled (with FVM)"
+        log_info "  kce-full-setup [version] - Run setup with all options enabled (with FVM)"
         log_info "  kce-status         - Check Flutter status"
         log_info "  kce-docs           - Fetch documentation"
         log_info "  kce-deps           - Check dependencies"
@@ -997,6 +1058,12 @@ main() {
         log_info "  flutter / dart     - Use FVM Flutter/Dart (after setup)"
         echo ""
         log_info "For help: kce --help"
+        log_info ""
+        log_info "Flutter version management:"
+        log_info "  Current version: $FLUTTER_VERSION"
+        log_info "  Change version: kce-full-setup <version>"
+        log_info "  Example: kce-full-setup 3.29.3"
+        log_info "  List versions: kce-fvm-releases"
         
         # FVM verification note
         echo ""
@@ -1006,14 +1073,14 @@ main() {
         
         # Offer to run setup immediately
         echo ""
-        read -p "Would you like to run the full setup now? (y/N): " -n 1 -r
+        read -p "Do you want to run the full setup now? This will install Flutter $FLUTTER_VERSION and configure everything. (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Running full setup..."
+            log_info "Running full setup with Flutter version $FLUTTER_VERSION..."
             source "${INSTALL_DIR}/setup_env.sh"
-            kce-full-setup
+            kce-full-setup "$FLUTTER_VERSION"
         else
-            log_info "You can run the setup later with: kce-full-setup"
+            log_info "You can run the setup later with: kce-full-setup [flutter-version]"
         fi
     fi
 }

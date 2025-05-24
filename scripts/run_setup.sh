@@ -2,6 +2,7 @@
 
 # Komodo Codex Environment - Setup Runner with FVM
 # This script runs the full setup with all options enabled using FVM for Flutter management
+# Usage: ./run_setup.sh [--flutter-version VERSION]
 
 set -euo pipefail
 
@@ -12,7 +13,30 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Default Flutter version
+FLUTTER_VERSION="3.32.0"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --flutter-version)
+            FLUTTER_VERSION="$2"
+            shift 2
+            ;;
+        --flutter-version=*)
+            FLUTTER_VERSION="${1#*=}"
+            shift
+            ;;
+        *)
+            echo "Unknown option $1"
+            echo "Usage: $0 [--flutter-version VERSION]"
+            exit 1
+            ;;
+    esac
+done
+
 echo -e "${BLUE}Starting Komodo Codex Environment Setup with FVM and All Options Enabled${NC}"
+echo -e "${YELLOW}Flutter version: $FLUTTER_VERSION${NC}"
 
 # Change to script directory
 cd "$(dirname "$0")"
@@ -26,9 +50,9 @@ echo -e "${YELLOW}Checking system dependencies...${NC}"
 PYTHONPATH=src uv run python -m komodo_codex_env.cli check-deps
 
 # Set Python path and run the full setup with FVM
-echo -e "${YELLOW}Running full setup with FVM...${NC}"
+echo -e "${YELLOW}Running full setup with FVM and Flutter version $FLUTTER_VERSION...${NC}"
 PYTHONPATH=src uv run python -m komodo_codex_env.cli setup \
-    --flutter-version 3.32.0 \
+    --flutter-version "$FLUTTER_VERSION" \
     --install-method precompiled \
     --platforms web,android,linux \
     --kdf-docs \
