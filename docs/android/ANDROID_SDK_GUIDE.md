@@ -59,12 +59,13 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
 
 3. **Essential Android Packages**
    - `platform-tools` (adb, fastboot)
-   - `platforms;android-34` (Latest stable API)
-   - `platforms;android-33` (Previous stable API)
+   - `platforms;android-35` (Latest stable API)
+   - `platforms;android-34` (Previous stable API)
+   - `platforms;android-33` (Earlier stable API)
+   - `build-tools;35.0.1`
    - `build-tools;34.0.0`
-   - `build-tools;33.0.1`
    - `emulator`
-   - `system-images;android-34;google_apis;x86_64`
+   - `system-images;android-35;google_apis;x86_64`
 
 4. **Environment Variables**
    - `ANDROID_HOME`: Points to Android SDK directory
@@ -88,13 +89,15 @@ After installation, your Android SDK will be organized as:
 │   └── fastboot
 ├── platforms/
 │   ├── android-33/
-│   └── android-34/
+│   ├── android-34/
+│   └── android-35/
 ├── build-tools/
 │   ├── 33.0.1/
-│   └── 34.0.0/
+│   ├── 34.0.0/
+│   └── 35.0.1/
 ├── emulator/
 └── system-images/
-    └── android-34/
+    └── android-35/
         └── google_apis/
             └── x86_64/
 ```
@@ -366,7 +369,7 @@ sdkmanager "build-tools;33.0.2"
 
 ```bash
 # Create new AVD
-avdmanager create avd -n test_device -k "system-images;android-34;google_apis;x86_64"
+avdmanager create avd -n test_device -k "system-images;android-35;google_apis;x86_64"
 
 # List AVDs
 avdmanager list avd

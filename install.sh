@@ -858,50 +858,12 @@ install_fvm_for_user() {
         return 0
     fi
     
-    # Ensure .pub-cache/bin directory exists
-    local pub_cache_bin="$user_home/.pub-cache/bin"
-    sudo -u "$target_user" mkdir -p "$pub_cache_bin"
-    
-    # Try different installation methods
-    local installed=false
-    
-    # Method 1: Try with existing Dart/Flutter if available
-    if sudo -u "$target_user" bash -c "command -v dart >/dev/null 2>&1"; then
-        log_info "Installing FVM via dart pub global activate..."
-        if sudo -u "$target_user" bash -c "dart pub global activate fvm" 2>/dev/null; then
-            installed=true
-        fi
-    elif sudo -u "$target_user" bash -c "command -v flutter >/dev/null 2>&1"; then
-        log_info "Installing FVM via flutter pub global activate..."
-        if sudo -u "$target_user" bash -c "flutter pub global activate fvm" 2>/dev/null; then
-            installed=true
-        fi
-    fi
-    
-    # Method 2: Install Flutter bootstrap first, then FVM
-    if [[ "$installed" = false ]]; then
-        log_info "Installing Flutter bootstrap for FVM installation..."
-        local bootstrap_dir="$user_home/.flutter_bootstrap"
+    # Use the official FVM install script which handles all dependencies
+    log_info "Installing FVM using official install script..."
+    if sudo -u "$target_user" bash -c "cd '$user_home' && curl -fsSL https://fvm.app/install.sh | bash"; then
+        log_success "FVM installed successfully for user $target_user"
         
-        # Remove existing bootstrap if present
-        sudo -u "$target_user" rm -rf "$bootstrap_dir"
-        
-        # Clone Flutter
-        if sudo -u "$target_user" git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$bootstrap_dir" 2>/dev/null; then
-            # Initialize Flutter
-            sudo -u "$target_user" bash -c "cd '$bootstrap_dir' && bin/flutter doctor" >/dev/null 2>&1 || true
-            
-            # Install FVM
-            if sudo -u "$target_user" bash -c "cd '$bootstrap_dir' && bin/dart pub global activate fvm" 2>/dev/null; then
-                installed=true
-                # Clean up bootstrap
-                sudo -u "$target_user" rm -rf "$bootstrap_dir"
-            fi
-        fi
-    fi
-    
-    if [[ "$installed" = true ]]; then
-        # Add pub-cache/bin to PATH in user's shell profile
+        # Ensure FVM is in PATH for the user's shell profiles
         local shell_profiles=("$user_home/.bashrc" "$user_home/.zshrc" "$user_home/.profile")
         local path_line='export PATH="$PATH:$HOME/.pub-cache/bin"'
         
@@ -913,11 +875,10 @@ install_fvm_for_user() {
             fi
         done
         
-        log_success "FVM installed successfully for user $target_user"
         return 0
     else
-        log_warn "FVM installation failed for user $target_user - will be installed later via Python setup"
-        return 0  # Don't fail the entire installation
+        log_warn "FVM installation failed for user $target_user using official script"
+        return 1
     fi
 }
 

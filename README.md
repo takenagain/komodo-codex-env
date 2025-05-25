@@ -265,7 +265,7 @@ You can install just the Android SDK without the full Flutter setup:
 
 - **Automatic Java Installation**: Installs OpenJDK 17 if not present
 - **Command Line Tools**: Downloads and installs latest Android SDK command line tools
-- **Essential Packages**: Installs platform-tools, build-tools, Android API levels 33-34
+- **Essential Packages**: Installs platform-tools, build-tools, Android API levels 33-35
 - **Environment Setup**: Configures ANDROID_HOME and PATH variables
 - **License Management**: Handles Android SDK license acceptance
 - **Cross-Platform**: Supports Linux, macOS, and Windows

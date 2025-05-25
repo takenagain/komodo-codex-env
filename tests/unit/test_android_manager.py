@@ -28,7 +28,7 @@ class AndroidManagerTests(unittest.TestCase):
         self.android_manager = AndroidManager(self.config, self.executor, self.dep_manager)
 
     def test_android_manager_initialization(self):
-        self.assertEqual(self.android_manager.cmdline_tools_version, "11076708")
+        self.assertEqual(self.android_manager.cmdline_tools_version, "13114758")
 
     def test_java_version_detection(self):
         with patch.object(self.android_manager.executor, "check_command_exists", return_value=True):

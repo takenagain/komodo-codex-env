@@ -52,7 +52,7 @@ class FlutterManager:
         return False
     
     def install_fvm(self) -> bool:
-        """Install FVM using various methods."""
+        """Install FVM using the official installer script."""
         if self.is_fvm_installed():
             console.print("[green]FVM is already installed[/green]")
             return True
@@ -65,60 +65,43 @@ class FlutterManager:
         
         try:
             if "darwin" in os_name:
-                # macOS - try Homebrew first, then pub global
+                # macOS - try Homebrew first, then official installer
                 if self.executor.check_command_exists("brew"):
                     console.print("[blue]Installing FVM via Homebrew...[/blue]")
                     try:
                         self.executor.run_command("brew tap leoafarias/fvm")
                         self.executor.run_command("brew install fvm")
                         if self.is_fvm_installed():
+                            console.print("[green]FVM installed successfully via Homebrew![/green]")
                             return True
                     except Exception:
-                        console.print("[yellow]Homebrew installation failed, trying pub global...[/yellow]")
+                        console.print("[yellow]Homebrew installation failed, trying official installer...[/yellow]")
             
-            # Universal method - pub global activate
-            console.print("[blue]Installing FVM via pub global activate...[/blue]")
+            # Universal method - official FVM installer script
+            console.print("[blue]Installing FVM via official installer script...[/blue]")
             
-            # First ensure we have Dart/Flutter pub available
-            if not self.executor.check_command_exists("dart") and not self.executor.check_command_exists("flutter"):
-                # Install Flutter first via git as a bootstrap
-                console.print("[blue]Installing Flutter bootstrap for FVM...[/blue]")
-                bootstrap_dir = self.config.home_dir / ".flutter_bootstrap"
-                if not self._install_flutter_bootstrap(bootstrap_dir):
-                    return False
-                
-                # Add bootstrap to PATH temporarily
-                import os
-                current_path = os.environ.get("PATH", "")
-                os.environ["PATH"] = f"{bootstrap_dir / 'bin'}:{current_path}"
-            
-            # Install FVM via pub global
             result = self.executor.run_command(
-                "dart pub global activate fvm",
+                "curl -fsSL https://fvm.app/install.sh | bash",
                 timeout=300,
                 check=False
             )
             
-            if result.returncode != 0:
-                # Try with flutter pub instead
-                result = self.executor.run_command(
-                    "flutter pub global activate fvm",
-                    timeout=300,
-                    check=False
-                )
-            
             if result.returncode == 0:
-                # Add pub cache to PATH for both current user and common locations
+                # Add FVM paths to PATH
                 self._add_fvm_to_path()
-            
+                
                 # Reload PATH for current session
                 self._update_session_path()
                 
-                console.print("[green]FVM installed successfully via pub global![/green]")
-                return True
-            else:
-                console.print("[red]Failed to install FVM via pub global[/red]")
-                return False
+                # Verify installation
+                if self.is_fvm_installed():
+                    console.print("[green]FVM installed successfully via official installer![/green]")
+                    return True
+                else:
+                    console.print("[yellow]FVM installer completed but FVM not found in PATH[/yellow]")
+            
+            console.print("[red]Failed to install FVM via official installer[/red]")
+            return False
                 
         except Exception as e:
             console.print(f"[red]FVM installation failed: {e}[/red]")
@@ -147,37 +130,6 @@ class FlutterManager:
             if Path(fvm_path).exists() and fvm_path not in current_path:
                 os.environ["PATH"] = f"{current_path}:{fvm_path}"
                 current_path = os.environ["PATH"]
-    
-    def _install_flutter_bootstrap(self, bootstrap_dir: Path) -> bool:
-        """Install a minimal Flutter bootstrap for FVM installation."""
-        try:
-            if bootstrap_dir.exists():
-                import shutil
-                shutil.rmtree(bootstrap_dir)
-            
-            console.print("[blue]Cloning Flutter bootstrap...[/blue]")
-            result = self.executor.run_command(
-                f"git clone --depth 1 --branch stable https://github.com/flutter/flutter.git {bootstrap_dir}",
-                timeout=300,
-                check=False
-            )
-            
-            if result.returncode != 0:
-                console.print("[red]Failed to clone Flutter bootstrap[/red]")
-                return False
-            
-            # Run flutter doctor once to initialize
-            result = self.executor.run_command(
-                f"{bootstrap_dir / 'bin' / 'flutter'} doctor",
-                timeout=120,
-                check=False
-            )
-            
-            return True
-            
-        except Exception as e:
-            console.print(f"[red]Flutter bootstrap installation failed: {e}[/red]")
-            return False
     
     def is_flutter_installed(self) -> bool:
         """Check if Flutter is installed via FVM."""

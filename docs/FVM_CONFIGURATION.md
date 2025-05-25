@@ -16,11 +16,13 @@ Previously, FVM was not being found in the environment because:
 ### 1. Install Script Changes (`install.sh`)
 
 **Added FVM Installation Step:**
+
 - New `install_fvm()` function that installs FVM for multiple users
 - Added to the installation steps pipeline
 - Installs FVM for current user, komodo user, and root user (if applicable)
 
 **Enhanced Shell Integration:**
+
 - Updated `setup_env.sh` to include FVM paths in PATH
 - Added `.pub-cache/bin` and `.fvm/default/bin` to PATH
 - Ensures PATH is configured on shell startup
@@ -28,11 +30,13 @@ Previously, FVM was not being found in the environment because:
 ### 2. Python Code Improvements
 
 **Enhanced FVM Detection (`flutter_manager.py`):**
+
 - Improved `is_fvm_installed()` to check multiple locations
 - Checks common FVM installation paths for all users
 - Temporarily adds FVM to PATH if found in non-standard locations
 
 **Multi-User PATH Configuration (`dependency_manager.py`):**
+
 - New `add_to_path_for_multiple_users()` method
 - Safely adds PATH entries to shell profiles for:
   - Current user
@@ -40,12 +44,14 @@ Previously, FVM was not being found in the environment because:
   - Root user (`.bashrc`, `.zshrc`, `.profile`)
 
 **Updated Setup Process (`setup.py`):**
+
 - Uses multi-user PATH configuration
 - Ensures FVM paths are available for all users
 
 ### 3. Verification Tools
 
 **FVM Verification Script (`scripts/verify_fvm.py`):**
+
 - Comprehensive FVM installation checker
 - Verifies FVM for multiple users
 - Checks PATH configuration in shell profiles
@@ -55,12 +61,14 @@ Previously, FVM was not being found in the environment because:
 
 FVM is installed in the following locations:
 
-### Per-User Locations:
+### Per-User Locations
+
 - `$HOME/.pub-cache/bin/fvm` - Main FVM binary
 - `$HOME/.fvm/` - FVM Flutter versions storage
 - `$HOME/.fvm/default/bin/` - Active Flutter version binaries
 
-### Multi-User Support:
+### Multi-User Support
+
 - `/home/komodo/.pub-cache/bin/fvm`
 - `/root/.pub-cache/bin/fvm`
 - Current user's home directory
@@ -72,14 +80,16 @@ The following paths are added to shell profiles:
 1. `$HOME/.pub-cache/bin` - For FVM binary
 2. `$HOME/.fvm/default/bin` - For active Flutter/Dart binaries
 
-### Shell Profiles Updated:
+### Shell Profiles Updated
+
 - `.bashrc`
-- `.zshrc` 
+- `.zshrc`
 - `.profile`
 
 ## Usage
 
 ### Installation
+
 ```bash
 # Run the install script (includes FVM installation)
 curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh | bash
@@ -89,6 +99,7 @@ curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/in
 ```
 
 ### Verification
+
 ```bash
 # Verify FVM installation for all users
 python3 ~/.komodo-codex-env/scripts/verify_fvm.py
@@ -101,6 +112,7 @@ kce-fvm-list
 ```
 
 ### FVM Commands Available
+
 ```bash
 # Direct FVM commands
 fvm list                    # List installed Flutter versions
@@ -122,12 +134,14 @@ dart --version             # Uses FVM Dart
 ## Troubleshooting
 
 ### FVM Not Found
+
 1. Restart your terminal to reload PATH
 2. Run: `source ~/.bashrc` or `source ~/.zshrc`
 3. Verify installation: `python3 ~/.komodo-codex-env/scripts/verify_fvm.py`
 4. Re-run setup: `kce-full-setup`
 
 ### Permission Issues
+
 ```bash
 # If running as root, use --allow-root flag
 ./install.sh --allow-root
@@ -138,12 +152,14 @@ sudo chown -R komodo:komodo /home/komodo/.fvm
 ```
 
 ### Manual FVM Installation
-If automatic installation fails:
-```bash
-# Install for current user
-dart pub global activate fvm
 
-# Add to PATH manually
+If automatic installation fails:
+
+```bash
+# Use official FVM installer
+curl -fsSL https://fvm.app/install.sh | bash
+
+# Add to PATH manually if needed
 echo 'export PATH="$PATH:$HOME/.pub-cache/bin"' >> ~/.bashrc
 source ~/.bashrc
 ```
@@ -159,13 +175,15 @@ source ~/.bashrc
 
 ## Technical Details
 
-### Installation Process:
+### Installation Process
+
 1. Install script downloads and installs FVM using pub global activate
 2. Configures PATH in shell profiles for all users
 3. Python setup verifies and enhances FVM configuration
 4. Verification script confirms proper installation
 
-### Fallback Mechanisms:
+### Fallback Mechanisms
+
 - Multiple FVM detection methods
 - Common path checking
 - Session PATH updates

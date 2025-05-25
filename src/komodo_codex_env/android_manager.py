@@ -23,14 +23,17 @@ class AndroidManager:
         self.executor = executor
         self.dep_manager = dep_manager
         
-        # Android SDK paths
-        self.android_home = self.config.home_dir / "Android" / "Sdk"
+        # Android SDK paths - use /opt/android-sdk-linux for consistency with Docker
+        self.android_home = Path("/opt/android-sdk-linux")
         self.android_tools_dir = self.android_home / "tools"
         self.android_platform_tools_dir = self.android_home / "platform-tools"
         self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"
         
-        # Command line tools download info
-        self.cmdline_tools_version = "11076708"  # Latest stable version
+        # Version constants matching the working Dockerfile
+        self.cmdline_tools_version = "13114758"  # ANDROID_SDK_TOOLS_VERSION
+        self.android_platform_version = "35"    # ANDROID_PLATFORM_VERSION
+        self.android_build_tools_version = "35.0.1"  # ANDROID_BUILD_TOOLS_VERSION
+        self.android_ndk_version = "28.1.13356709"   # ANDROID_NDK_VERSION
         
     def is_android_sdk_installed(self) -> bool:
         """Check if Android SDK is already installed."""
@@ -78,17 +81,17 @@ class AndroidManager:
         java_packages = []
         
         if os_name == "linux":
-            # Use OpenJDK 17 (recommended for Android development)
-            java_packages = ["openjdk-17-jdk"]
+            # Use OpenJDK 21 (matching the working Dockerfile)
+            java_packages = ["openjdk-21-jdk"]
         elif os_name == "darwin":  # macOS
             # Check if Homebrew is available
             if self.executor.check_command_exists("brew"):
                 try:
-                    result = self.executor.run_command("brew install openjdk@17", check=False)
+                    result = self.executor.run_command("brew install openjdk@21", check=False)
                     if result.returncode == 0:
                         # Create symlink for system java
                         self.executor.run_command(
-                            "sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk",
+                            "sudo ln -sfn /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk",
                             check=False
                         )
                         console.print("[green]✓ Java installed via Homebrew[/green]")
@@ -244,21 +247,24 @@ class AndroidManager:
         
         sdkmanager_path = self.android_cmdline_tools_dir / "bin" / "sdkmanager"
         
-        # Essential packages for Flutter Android development
+        # Essential packages for Flutter Android development (matching Dockerfile)
         packages = [
             "platform-tools",
-            "platforms;android-34",  # Latest stable API level
-            "platforms;android-33",  # Previous stable API level
-            "build-tools;34.0.0",
-            "build-tools;33.0.1",
+            f"platforms;android-{self.android_platform_version}",  # Android 15
+            "platforms;android-34",  # Previous stable API level (Android 14)
+            "platforms;android-33",  # Android 13 for compatibility
+            f"build-tools;{self.android_build_tools_version}",    # Latest build tools
+            "build-tools;34.0.0",    # Previous build tools for compatibility
             "emulator",
-            "system-images;android-34;google_apis;x86_64",
+            f"system-images;android-{self.android_platform_version};google_apis;x86_64",  # Latest emulator image
+            "cmdline-tools;latest",  # Ensure latest command line tools
+            f"ndk;{self.android_ndk_version}",  # NDK for native development
         ]
         
         try:
             # Accept licenses first
             console.print("[blue]Accepting Android SDK licenses...[/blue]")
-            license_result = self.executor.run_command(
+            self.executor.run_command(
                 f"yes | {sdkmanager_path} --licenses",
                 check=False,
                 timeout=60
@@ -284,6 +290,38 @@ class AndroidManager:
         except Exception as e:
             console.print(f"[red]✗ Failed to install SDK packages: {e}[/red]")
             return False
+    
+    def install_system_dependencies(self) -> bool:
+        """Install system dependencies required for Android development (matching Dockerfile)."""
+        console.print("[blue]Installing system dependencies for Android development...[/blue]")
+        
+        system_info = self.dep_manager.get_system_info()
+        os_name = system_info.get("os", "").lower()
+        
+        if os_name == "linux":
+            # System packages from the working Dockerfile
+            system_packages = [
+                "jq", "nodejs", "npm", "wget", "zip", "unzip", "git", 
+                "openssh-client", "curl", "bc", "software-properties-common", 
+                "build-essential", "ruby-full", "ruby-bundler", "libstdc++6",
+                "libpulse0", "libglu1-mesa", "locales", "lcov", "libsqlite3-dev",
+                # For x86 emulators
+                "libxtst6", "libnss3-dev", "libnspr4", "libxss1", 
+                "libatk-bridge2.0-0", "libgtk-3-0", "libgdk-pixbuf2.0-0",
+                # For Linux builds (Flutter desktop)
+                "xz-utils", "clang", "cmake", "ninja-build", "pkg-config",
+                "libgtk-3-dev", "liblzma-dev", "libstdc++-12-dev"
+            ]
+            
+            success = self.dep_manager.install_dependencies(system_packages)
+            if success:
+                console.print("[green]✓ System dependencies installed[/green]")
+            else:
+                console.print("[yellow]⚠ Some system dependencies may have failed to install[/yellow]")
+            return success
+        else:
+            console.print(f"[yellow]System dependency installation not implemented for {os_name}[/yellow]")
+            return True  # Don't fail on non-Linux systems
     
     def verify_installation(self) -> bool:
         """Verify Android SDK installation."""
@@ -323,6 +361,10 @@ class AndroidManager:
         if self.is_android_sdk_installed():
             console.print("[green]✓ Android SDK already installed[/green]")
             return self.verify_installation()
+        
+        # Install system dependencies first
+        if not self.install_system_dependencies():
+            console.print("[yellow]⚠ System dependencies installation had issues, continuing...[/yellow]")
         
         # Install Java if not present
         if not self.is_java_installed():
@@ -381,3 +423,40 @@ class AndroidManager:
             info["java_status"] = "not_installed"
         
         return info
+    
+    def setup_android_directories(self) -> bool:
+        """Setup Android SDK directories with proper permissions."""
+        console.print("[blue]Setting up Android SDK directories...[/blue]")
+        
+        try:
+            # Create the directory structure
+            self.android_home.mkdir(parents=True, exist_ok=True)
+            
+            # Set ownership to current user (similar to Dockerfile approach)
+            import getpass
+            current_user = getpass.getuser()
+            
+            # Change ownership to current user (may require sudo)
+            result = self.executor.run_command(
+                f"sudo chown -R {current_user}:{current_user} {self.android_home}",
+                check=False
+            )
+            
+            if result.returncode != 0:
+                console.print("[yellow]⚠ Could not change directory ownership, trying without sudo...[/yellow]")
+                # Try to create in user directory instead
+                fallback_home = Path.home() / "Android" / "Sdk" 
+                fallback_home.mkdir(parents=True, exist_ok=True)
+                # Update paths to use fallback
+                self.android_home = fallback_home
+                self.android_tools_dir = self.android_home / "tools"
+                self.android_platform_tools_dir = self.android_home / "platform-tools"
+                self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"
+                console.print(f"[blue]Using fallback directory: {self.android_home}[/blue]")
+            
+            console.print(f"[green]✓ Android SDK directory ready: {self.android_home}[/green]")
+            return True
+            
+        except Exception as e:
+            console.print(f"[red]✗ Failed to setup Android directories: {e}[/red]")
+            return False

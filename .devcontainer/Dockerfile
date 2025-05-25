@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     lsb-release \
+    unzip \
+    python3-pip \
+    python3-full \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user

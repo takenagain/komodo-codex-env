@@ -39,8 +39,8 @@ This document summarizes the implementation of Android SDK installation and mana
 ```python
 # New Android configuration options
 install_android_sdk: bool = True
-android_api_level: str = "34"
-android_build_tools_version: str = "34.0.0"
+android_api_level: str = "35"
+android_build_tools_version: str = "35.0.1"
 android_home: Optional[Path] = None
 ```
 
@@ -78,8 +78,8 @@ def add_environment_variable(self, var_name: str, var_value: str, profile_path: 
 - Extracts to proper directory structure (`~/Android/Sdk/cmdline-tools/latest/`)
 - Installs essential packages:
   - `platform-tools` (adb, fastboot)
-  - `platforms;android-34` and `platforms;android-33`
-  - `build-tools;34.0.0` and `build-tools;33.0.1`
+  - `platforms;android-35`, `platforms;android-34` and `platforms;android-33`
+  - `build-tools;35.0.1` and `build-tools;34.0.0`
   - `emulator` and system images
 - Handles SDK license acceptance automatically
 

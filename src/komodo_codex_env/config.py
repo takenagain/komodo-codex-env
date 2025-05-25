@@ -28,8 +28,8 @@ class EnvironmentConfig:
 
     # Android configuration
     install_android_sdk: bool = True
-    android_api_level: str = "34"
-    android_build_tools_version: str = "34.0.0"
+    android_api_level: str = "35"
+    android_build_tools_version: str = "35.0.1"
 
     # Git configuration
     fetch_all_remote_branches: bool = True

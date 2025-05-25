@@ -147,8 +147,8 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def test_config_android_settings(self):
         config = EnvironmentConfig()
         self.assertTrue(config.install_android_sdk)
-        self.assertEqual(config.android_api_level, "34")
-        self.assertEqual(config.android_build_tools_version, "34.0.0")
+        self.assertEqual(config.android_api_level, "35")
+        self.assertEqual(config.android_build_tools_version, "35.0.1")
         self.assertIsNotNone(config.android_home)
 
         with patch.dict(os.environ, {"INSTALL_ANDROID_SDK": "false"}):
