@@ -51,7 +51,8 @@ python tests/integration/test_komodo_wallet_build.py
 
 ### Using the Test Runner
 
-The `run_tests.py` script provides more control over test execution:
+The `run_tests.py` script provides more control over test execution. It now
+supports parallel execution via the `--parallel` flag:
 
 ```bash
 # Run all tests
@@ -77,6 +78,9 @@ python tests/integration/run_tests.py --suite full
 
 # Enable debug logging
 python tests/integration/run_tests.py --suite all --debug
+
+# Run tests in parallel using 4 workers
+python tests/integration/run_tests.py --suite all --parallel --workers 4
 
 # Stop on first failure
 python tests/integration/run_tests.py --suite all --failfast
@@ -211,6 +215,7 @@ Tests require significant resources:
 ### Optimization Tips
 
 1. **Parallel execution** - Use `--suite` to run only required tests
+   and the `--parallel` flag to run tests concurrently
 2. **Docker layer caching** - Rebuild images only when necessary
 3. **Container reuse** - Consider keeping containers for debugging
 4. **Network caching** - Use local mirrors for dependencies if available
