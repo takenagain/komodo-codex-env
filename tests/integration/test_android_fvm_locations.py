@@ -85,11 +85,7 @@ class AndroidFVMLocationTestBase(unittest.TestCase):
         
         result = subprocess.run(
             ["docker", "run", "-d", "--name", container_name, 
-             "--privileged",
-             "--memory", "4g",
-             "--shm-size", "2g",
              "--tmpfs", "/tmp:rw,exec,nosuid,size=2g",
-             "--storage-opt", "size=10g",
              self.image_name, "sleep", "3600"],
             capture_output=True,
             text=True,

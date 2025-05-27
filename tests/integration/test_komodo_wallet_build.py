@@ -5,13 +5,9 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-try:
-    import rich, requests
-    from rich.console import Console
-    from rich.logging import RichHandler
-except ImportError:
-    rich = None
-    requests = None
+import rich, requests
+from rich.console import Console
+from rich.logging import RichHandler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = PROJECT_ROOT / ".devcontainer" / "Dockerfile"
@@ -75,10 +71,6 @@ class DockerTestBase(unittest.TestCase):
         
         result = subprocess.run(
             ["docker", "run", "-d", "--name", container_name, 
-             "--privileged",
-             "-v", "/var/run/docker.sock:/var/run/docker.sock",
-             "--memory", "4g",
-             "--shm-size", "2g",
              self.image_name, "sleep", "7200"],
             capture_output=True,
             text=True,

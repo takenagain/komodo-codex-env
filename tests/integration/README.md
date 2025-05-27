@@ -37,7 +37,6 @@ pip install rich requests
 ### Docker Requirements
 
 - Docker must be installed and accessible
-- Sufficient system resources (4GB RAM recommended for Android builds)
 - Network access for downloading dependencies
 
 ## Usage
@@ -113,10 +112,8 @@ Key environment variables used:
 ### Container Configuration
 
 Docker containers are configured with:
-- 4GB memory limit
-- 2GB shared memory
-- Privileged mode (required for Android SDK operations)
 - 2-hour timeout for long builds
+- Temporary filesystem mounts for performance optimization
 
 ## Test Scenarios
 
@@ -207,9 +204,8 @@ Default timeouts are set conservatively:
 
 ### Resource Usage
 
-Tests require significant resources:
-- Memory: 4GB+ recommended
-- Disk: 10GB+ for Android SDK and dependencies
+Tests may require significant resources depending on the build complexity:
+- Disk: Sufficient space for Android SDK and dependencies
 - Network: High bandwidth for dependency downloads
 
 ### Optimization Tips

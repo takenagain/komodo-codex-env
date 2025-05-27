@@ -39,10 +39,7 @@ OPTIMIZATION_SCRIPT = PROJECT_ROOT / "scripts" / "optimize_docker_space.sh"
 
 # Container settings optimized for space
 CONTAINER_CONFIG = {
-    "memory": "4g",
-    "shm_size": "2g",
     "tmpfs_size": "2g",
-    "storage_opt": "size=15g",  # Increased storage for SDK installation
 }
 
 def setup_logging(level=logging.INFO):
@@ -144,11 +141,7 @@ class OptimizedAndroidFVMTest:
             docker_args = [
                 "docker", "run", "-d", 
                 "--name", self.container_name,
-                "--privileged",
-                "--memory", CONTAINER_CONFIG["memory"],
-                "--shm-size", CONTAINER_CONFIG["shm_size"],
                 "--tmpfs", f"/tmp:rw,exec,nosuid,size={CONTAINER_CONFIG['tmpfs_size']}",
-                "--storage-opt", CONTAINER_CONFIG["storage_opt"],
                 "--env", "DEBIAN_FRONTEND=noninteractive",
                 self.image_name, 
                 "sleep", "7200"  # 2 hours

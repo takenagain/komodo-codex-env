@@ -3,9 +3,6 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "mounts": [
-    "source=${localWorkspaceFolder}/..,target=/workspace/..,type=bind,consistency=cached"
-  ],
   "features": {
     "ghcr.io/devcontainers/features/git:1": {
       "ppa": true,
@@ -34,5 +31,5 @@
     }
   },
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspace"
+  "workspaceFolder": "/workspaces/komodo-codex-env"
 }
