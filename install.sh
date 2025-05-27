@@ -6,6 +6,31 @@
 # With custom Flutter version: bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --flutter-version 3.29.3
 # This script installs FVM (Flutter Version Management) for better Flutter version control
 
+#
+# DEFAULT INSTALLATION PATH SUMMARY:
+# =================================
+# The default installation follows these steps in order:
+# 1. install_system_deps   - Install system dependencies (curl, git, unzip, python, dart)
+# 2. setup_python         - Setup Python environment (3.11+ required, 3.13 preferred)
+# 3. install_uv           - Install UV package manager for Python dependencies
+# 4. install_fvm          - Install FVM (Flutter Version Management) for all users
+# 5. setup_git            - Configure basic Git settings if not already set
+# 6. setup_project        - Clone repository, install Python deps, verify installation
+# 7. setup_shell_integration - Setup shell aliases and PATH modifications
+# 
+# After installation, the CLI runs with these default values:
+# - kce-full-setup uses: --platforms web,android,linux (includes Android SDK)
+# - Flutter version: 3.32.0 (configurable via --flutter-version)
+# - Install method: precompiled (faster than building from source)
+# - KDF docs: enabled (--kdf-docs flag)
+# - Verbose output: enabled (--verbose flag)
+#
+# User Management:
+# - Automatically detects and switches to non-root users (ubuntu, ec2-user, etc.)
+# - Installs to ~/.komodo-codex-env for the target user
+# - Configures shell integration in user's shell profile
+#
+
 set -uo pipefail
 # Note: removed 'e' from set options to prevent immediate exit on error
 
@@ -49,6 +74,18 @@ show_help() {
     echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --debug"
     echo ""
     echo "This script installs FVM (Flutter Version Management) for better Flutter version control."
+    echo ""
+    echo "User Management:"
+    echo "  - Automatically detects and switches to non-root users (ubuntu, ec2-user, etc.)"
+    echo "  - Installs Android SDK alongside FVM by default"
+    echo "  - Configures CLI with optimal default settings"
+    echo ""
+    echo "Default Installation Includes:"
+    echo "  - FVM (Flutter Version Management)"
+    echo "  - Android SDK (via --platforms android)"
+    echo "  - Web and Linux platform support" 
+    echo "  - KDF documentation"
+    echo "  - Shell integration and aliases"
 }
 
 # Parse command line arguments
@@ -260,7 +297,13 @@ install_system_deps() {
                         log_info "Adding deadsnakes PPA for Python ${REQUIRED_PYTHON_VERSION}..."
                         run_command "sudo add-apt-repository -y ppa:deadsnakes/ppa" "Failed to add deadsnakes PPA" || true
                         run_command "sudo apt-get update -qq" "Failed to update apt after adding PPA" || true
-                        run_command "sudo apt-get install -y python${REQUIRED_PYTHON_VERSION} python${REQUIRED_PYTHON_VERSION}-dev python${REQUIRED_PYTHON_VERSION}-venv python${REQUIRED_PYTHON_VERSION}-distutils" "Failed to install Python ${REQUIRED_PYTHON_VERSION}" || true
+                        
+                        # Install Python packages (distutils only for versions < 3.12)
+                        local python_packages="python${REQUIRED_PYTHON_VERSION} python${REQUIRED_PYTHON_VERSION}-dev python${REQUIRED_PYTHON_VERSION}-venv"
+                        if [[ "${REQUIRED_PYTHON_VERSION}" < "3.12" ]]; then
+                            python_packages="${python_packages} python${REQUIRED_PYTHON_VERSION}-distutils"
+                        fi
+                        run_command "sudo apt-get install -y ${python_packages}" "Failed to install Python ${REQUIRED_PYTHON_VERSION}" || true
                     fi
                     
                     # Note: Dart SDK and other system dependencies (curl, git, unzip, etc.) 
@@ -805,6 +848,11 @@ alias flutter="fvm flutter"
 alias dart="fvm dart"
 
 # Function for easy setup with all options (uses FVM)
+# This function runs the CLI setup with default values including:
+# - Android platform support (installs Android SDK automatically)
+# - Web and Linux platform support
+# - KDF documentation download
+# - Verbose output for debugging
 kce-full-setup() {
     local flutter_version="${1:-$FLUTTER_VERSION}"
     komodo-codex-env setup \
@@ -812,8 +860,7 @@ kce-full-setup() {
         --install-method precompiled \
         --platforms web,android,linux \
         --kdf-docs \
-        --verbose \
-        "$@"
+        --verbose
 }
 
 # FVM helper functions
@@ -942,22 +989,66 @@ create_non_root_user() {
     return 0
 }
 
+# Check for alternative non-root users and switch to them
+check_and_switch_user() {
+    # List of preferred non-root users to check for
+    local preferred_users=("ubuntu" "ec2-user" "centos" "fedora" "admin" "user")
+    
+    for user in "${preferred_users[@]}"; do
+        if id "$user" &>/dev/null; then
+            log_info "Found non-root user: $user"
+            log_info "Switching to user $user for installation..."
+            
+            # Set up environment for the target user
+            local user_home=$(eval echo "~$user")
+            local user_install_dir="${user_home}/.komodo-codex-env"
+            
+            # Export variables for the switched user
+            export INSTALL_DIR="$user_install_dir"
+            export HOME="$user_home"
+            export USER="$user"
+            
+            # Re-execute this script as the target user
+            exec sudo -u "$user" -H bash -c "
+                export INSTALL_DIR='$user_install_dir'
+                export HOME='$user_home'
+                export USER='$user'
+                export FLUTTER_VERSION='$FLUTTER_VERSION'
+                export ALLOW_ROOT='$ALLOW_ROOT'
+                export DEBUG='$DEBUG'
+                $(cat "$0")
+            "
+        fi
+    done
+    
+    # If no preferred user found, continue as current user
+    return 0
+}
+
 # Main installation function
 main() {
     log_step "Komodo Codex Environment Installer"
     log_info "OS: $(get_os) $(get_arch)"
-    log_info "Install directory: $INSTALL_DIR"
     
-    # Check if running as root
+    # Check if running as root and try to switch to a non-root user
     if [[ $EUID -eq 0 ]]; then
         if [[ "$ALLOW_ROOT" = true ]]; then
             log_warn "Running as root with --allow-root flag"
         else
+            log_info "Detected root user - checking for alternative non-root users..."
+            check_and_switch_user
+            
+            # If we reach here, no alternative user was found
             log_error "This script should not be run as root"
-            log_info "You can use --allow-root to bypass this check or create a non-root user"
+            log_info "Consider creating a non-root user (e.g., ubuntu, ec2-user) or use --allow-root to bypass this check"
+            log_info "Available options:"
+            log_info "  1. Create a user: sudo useradd -m -s /bin/bash ubuntu"
+            log_info "  2. Run with: --allow-root flag"
             exit 1
         fi
     fi
+    
+    log_info "Install directory: $INSTALL_DIR"
     
     # Create install directory
     mkdir -p "$INSTALL_DIR"
@@ -1034,10 +1125,11 @@ main() {
         
         # Offer to run setup immediately
         echo ""
-        read -p "Do you want to run the full setup now? This will install Flutter $FLUTTER_VERSION and configure everything. (y/N): " -n 1 -r
+        read -p "Do you want to run the full setup now? This will install Flutter $FLUTTER_VERSION and Android SDK with all features enabled. (Y/n): " -n 1 -r
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [[ -z "$REPLY" ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "Running full setup with Flutter version $FLUTTER_VERSION..."
+            log_info "This includes: Flutter $FLUTTER_VERSION, Android SDK, Web/Linux platforms, and KDF docs"
             source "${INSTALL_DIR}/setup_env.sh"
             kce-full-setup "$FLUTTER_VERSION"
         else
