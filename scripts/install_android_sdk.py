@@ -133,7 +133,7 @@ def install_java() -> bool:
 def get_cmdline_tools_url() -> str:
     """Get the download URL for Android command line tools."""
     system = platform.system().lower()
-    version = "11076708"  # Latest stable version
+    version = "13114758"  # Latest stable version (aligned with main config)
     
     base_url = "https://dl.google.com/android/repository"
     

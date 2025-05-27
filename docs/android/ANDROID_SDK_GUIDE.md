@@ -54,7 +54,7 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
    - Windows: Manual installation guidance
 
 2. **Android SDK Command Line Tools**
-   - Latest version (11076708) downloaded from Google
+   - Latest version (13114758) downloaded from Google
    - Extracted to `~/Android/Sdk/cmdline-tools/latest/`
 
 3. **Essential Android Packages**

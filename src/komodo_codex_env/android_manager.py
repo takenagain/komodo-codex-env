@@ -29,12 +29,20 @@ class AndroidManager:
         self.android_platform_tools_dir = self.android_home / "platform-tools"
         self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"
         
-        # Version constants matching the working Dockerfile
-        self.cmdline_tools_version = "13114758"  # ANDROID_SDK_TOOLS_VERSION
-        self.android_platform_version = "35"    # ANDROID_PLATFORM_VERSION
-        self.android_build_tools_version = "35.0.1"  # ANDROID_BUILD_TOOLS_VERSION
-        self.android_ndk_version = "28.1.13356709"   # ANDROID_NDK_VERSION
+        # Version constants matching the working Dockerfile and config
+        self.cmdline_tools_version = config.android_sdk_tools_version  # Use config value
+        self.android_platform_version = config.android_api_level    # Use config value
+        self.android_build_tools_version = config.android_build_tools_version  # Use config value
+        self.android_ndk_version = config.android_ndk_version   # Use config value
         
+    def _get_android_env(self) -> Dict[str, str]:
+        """Get Android environment variables."""
+        return {
+            "ANDROID_HOME": str(self.android_home),
+            "ANDROID_SDK_ROOT": str(self.android_home),
+            "PATH": f"{self.android_cmdline_tools_dir / 'bin'}:{self.android_platform_tools_dir}:{os.environ.get('PATH', '')}"
+        }
+    
     def is_android_sdk_installed(self) -> bool:
         """Check if Android SDK is already installed."""
         return (

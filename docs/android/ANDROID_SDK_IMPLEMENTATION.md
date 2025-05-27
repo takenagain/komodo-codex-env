@@ -74,7 +74,7 @@ def add_environment_variable(self, var_name: str, var_value: str, profile_path: 
 - **Windows**: Guidance for manual installation from Adoptium
 
 ### 2. Android SDK Management
-- Downloads latest command-line tools (version 11076708)
+- Downloads latest command-line tools (version 13114758)
 - Extracts to proper directory structure (`~/Android/Sdk/cmdline-tools/latest/`)
 - Installs essential packages:
   - `platform-tools` (adb, fastboot)

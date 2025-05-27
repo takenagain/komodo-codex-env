@@ -93,21 +93,21 @@ class DockerInstallTests(unittest.TestCase):
         self.copy_install_script()
         result = self.run_install(user="testuser")
         if result.returncode != 0:
-            self.fail(f"Install script failed: {result.stderr}")
+            self.fail(f"Install script failed with exit code {result.returncode}.\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
         self.assertTrue(self.verify_installation(user="testuser"))
 
     def test_root_install(self):
         self.copy_install_script()
         result = self.run_install(user="root", extra_args="--allow-root")
         if result.returncode != 0:
-            self.fail(f"Install script failed: {result.stderr}")
+            self.fail(f"Install script failed with exit code {result.returncode}.\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
         self.assertTrue(self.verify_installation(user="root"))
 
     def test_uv_entry_point_availability(self):
         self.copy_install_script()
         result = self.run_install(user="testuser")
         if result.returncode != 0:
-            self.fail("Install script failed")
+            self.fail(f"Install script failed with exit code {result.returncode}.\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
         cmd = [
             "docker",
             "exec",

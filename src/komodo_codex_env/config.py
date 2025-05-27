@@ -24,12 +24,14 @@ class EnvironmentConfig:
     # Flutter configuration
     flutter_version: str = "3.32.0"
     flutter_install_method: str = "precompiled"  # "git" or "precompiled"
-    platforms: List[str] = field(default_factory=lambda: ["web"])
+    platforms: List[str] = field(default_factory=lambda: ["android", "web"])
 
     # Android configuration
     install_android_sdk: bool = True
     android_api_level: str = "35"
     android_build_tools_version: str = "35.0.1"
+    android_sdk_tools_version: str = "13114758"  # Command line tools version
+    android_ndk_version: str = "28.1.13356709"  # NDK version
 
     # Git configuration
     fetch_all_remote_branches: bool = True
@@ -110,6 +112,15 @@ class EnvironmentConfig:
         config.should_fetch_agents_docs = os.getenv("SHOULD_FETCH_AGENTS_DOCS", "true").lower() == "true"
         config.should_fetch_kdf_api_docs = os.getenv("SHOULD_FETCH_KDF_API_DOCS", "false").lower() == "true"
         config.install_android_sdk = os.getenv("INSTALL_ANDROID_SDK", "true").lower() == "true"
+        
+        # Android configuration overrides
+        android_api_level = os.getenv("ANDROID_API_LEVEL")
+        if android_api_level:
+            config.android_api_level = android_api_level
+            
+        android_build_tools = os.getenv("ANDROID_BUILD_TOOLS_VERSION")
+        if android_build_tools:
+            config.android_build_tools_version = android_build_tools
 
         # Android SDK path override
         android_home_env = os.getenv("ANDROID_HOME") or os.getenv("ANDROID_SDK_ROOT")

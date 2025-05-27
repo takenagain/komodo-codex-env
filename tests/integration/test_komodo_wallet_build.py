@@ -216,11 +216,12 @@ class InstallationTest(DockerTestBase):
         result = self.run_command_in_container(command, user="testuser", timeout=1200)
         
         if result.returncode != 0:
-            logger.error("Install script output:")
+            logger.error("Install script failed:")
+            logger.error(f"Exit code: {result.returncode}")
             logger.error(f"STDOUT: {result.stdout}")
             logger.error(f"STDERR: {result.stderr}")
         
-        self.assertEqual(result.returncode, 0, "Install script execution failed")
+        self.assertEqual(result.returncode, 0, f"Install script execution failed with exit code {result.returncode}")
         logger.info("✓ Install script completed successfully")
 
     def test_post_install_verification(self):
