@@ -1,6 +1,8 @@
 {
   "name": "Komodo Codex Environment",
-  "image": "ubuntu:24.04",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
@@ -40,7 +42,7 @@
   },
   "postCreateCommand": "sudo apt-get update && sudo apt-get install -y curl wget git build-essential",
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspaces/komodo-codex-env",
+  "workspaceFolder": "/workspace",
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ]
