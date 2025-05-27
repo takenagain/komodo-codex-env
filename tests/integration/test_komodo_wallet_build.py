@@ -19,7 +19,7 @@ INSTALL_SCRIPT = PROJECT_ROOT / "install.sh"
 KOMODO_WALLET_REPO = "https://github.com/KomodoPlatform/komodo-wallet.git"
 
 # Android SDK configuration (matching android_manager.py)
-ANDROID_HOME = "/opt/android-sdk-linux"
+ANDROID_HOME = "/opt/android-sdk"
 ANDROID_USER_HOME = "/home/testuser/Android/Sdk"  # Fallback for user-specific installation
 
 # Configure logging

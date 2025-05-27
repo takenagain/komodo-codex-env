@@ -23,8 +23,8 @@ class AndroidManager:
         self.executor = executor
         self.dep_manager = dep_manager
         
-        # Android SDK paths - use /opt/android-sdk-linux for consistency with Docker
-        self.android_home = Path("/opt/android-sdk-linux")
+        # Android SDK paths - default to config value or system path
+        self.android_home = config.android_home if config.android_home else Path("/opt/android-sdk")
         self.android_tools_dir = self.android_home / "tools"
         self.android_platform_tools_dir = self.android_home / "platform-tools"
         self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"

@@ -100,7 +100,7 @@ python -m unittest tests.integration.test_komodo_wallet_build.EnvironmentSetupTe
 ### Android SDK Paths
 
 The tests support multiple Android SDK installation locations:
-- System-wide: `/opt/android-sdk-linux` (default from android_manager.py)
+- System-wide: `/opt/android-sdk` (default from android_manager.py)
 - User-specific: `/home/testuser/Android/Sdk` (fallback)
 
 ### Environment Variables
