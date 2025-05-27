@@ -23,5 +23,10 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /workspace
 
+# Create a vscode user
+RUN useradd -m -s /bin/bash vscode && \
+    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+USER vscode
+
 # Project files will be mounted via devcontainer workspace mount
 # User creation and configuration handled by devcontainer features

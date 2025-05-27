@@ -3,16 +3,10 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "mounts": [
+    "source=${localWorkspaceFolder}/..,target=/workspace/..,type=bind,consistency=cached"
+  ],
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true,
-      "configureZshAsDefaultShell": true,
-      "installOhMyZsh": true,
-      "upgradePackages": true,
-      "username": "vscode",
-      "userUid": "1000",
-      "userGid": "1000"
-    },
     "ghcr.io/devcontainers/features/git:1": {
       "ppa": true,
       "version": "latest"
@@ -32,18 +26,13 @@
         "tamasfe.even-better-toml"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/python/current/bin/python",
         "python.formatting.provider": "black",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true,
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y curl wget git build-essential",
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspace",
-  "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  ]
+  "workspaceFolder": "/workspace"
 }
