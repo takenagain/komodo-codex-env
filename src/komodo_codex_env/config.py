@@ -68,7 +68,8 @@ class EnvironmentConfig:
             self.initial_dir = Path.cwd()
 
         if self.android_home is None:
-            self.android_home = self.home_dir / "Android" / "Sdk"
+            # Default to system-wide installation path
+            self.android_home = Path("/opt/android-sdk")
 
     @property
     def script_gist_url(self) -> str:
@@ -109,6 +110,11 @@ class EnvironmentConfig:
         config.should_fetch_agents_docs = os.getenv("SHOULD_FETCH_AGENTS_DOCS", "true").lower() == "true"
         config.should_fetch_kdf_api_docs = os.getenv("SHOULD_FETCH_KDF_API_DOCS", "false").lower() == "true"
         config.install_android_sdk = os.getenv("INSTALL_ANDROID_SDK", "true").lower() == "true"
+
+        # Android SDK path override
+        android_home_env = os.getenv("ANDROID_HOME") or os.getenv("ANDROID_SDK_ROOT")
+        if android_home_env:
+            config.android_home = Path(android_home_env)
 
         # Handle platforms
         platforms_env = os.getenv("PLATFORMS")
