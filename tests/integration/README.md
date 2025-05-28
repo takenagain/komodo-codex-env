@@ -1,28 +1,29 @@
 # Integration Tests for Komodo Codex Environment
 
-This directory contains comprehensive integration tests for the Komodo Codex Environment setup and Komodo Wallet APK build process.
+This directory contains streamlined integration tests for the Komodo Codex Environment setup and Flutter development workflow.
 
 ## Overview
 
-The integration tests verify the complete pipeline from environment setup to building a Flutter APK for the Komodo Wallet project. Tests are organized into focused suites that can be run independently or as a complete pipeline.
+The integration tests verify the complete pipeline from environment setup to building Flutter applications. Tests are organized into focused suites that can be run independently or together.
 
 ## Test Structure
 
-### Test Classes
+### Docker-Based Integration Tests
 
-1. **SystemDependenciesTest** - Verifies system dependencies and user environment
-2. **InstallationTest** - Tests the install.sh script execution and verification
-3. **EnvironmentSetupTest** - Tests Komodo environment setup with Android support
-4. **AndroidEnvironmentTest** - Tests Android SDK configuration and tools
-5. **KomodoWalletBuildTest** - Tests the complete APK build process
-6. **FullPipelineIntegrationTest** - End-to-end integration test
+1. **test_flutter_only_integration.py** - Tests Flutter development without Android SDK
+2. **test_flutter_android_integration.py** - Tests Flutter development with Android SDK
+
+### Unit Tests (Fast)
+
+3. **test_setup.py** - Tests setup configuration and mocking
+4. **test_docs_location.py** - Tests documentation fetching behavior
 
 ### Key Features
 
 - **Docker-based isolation** - Each test runs in a clean Docker container
 - **Proper user management** - Tests run as `testuser` (non-root) for realistic scenarios
 - **Comprehensive logging** - Rich logging with different verbosity levels
-- **Intermediate verifications** - Each major step is verified before proceeding
+- **End-to-end verification** - Each test creates and builds a Flutter application
 - **Robust error handling** - Clear error messages with debugging information
 - **Resource management** - Proper container cleanup and resource allocation
 
@@ -45,54 +46,56 @@ pip install rich requests
 
 Run all tests:
 ```bash
-python tests/integration/test_komodo_wallet_build.py
+rye run pytest tests/integration/
 ```
 
-### Using the Test Runner
-
-The `run_tests.py` script provides more control over test execution. It now
-supports parallel execution via the `--parallel` flag:
-
+Run with parallel execution:
 ```bash
-# Run all tests
-python tests/integration/run_tests.py --suite all --verbose
-
-# Run only system dependency checks
-python tests/integration/run_tests.py --suite system
-
-# Run only installation tests
-python tests/integration/run_tests.py --suite install
-
-# Run environment setup tests
-python tests/integration/run_tests.py --suite environment
-
-# Run Android environment tests
-python tests/integration/run_tests.py --suite android
-
-# Run build tests only
-python tests/integration/run_tests.py --suite build
-
-# Run full pipeline integration test
-python tests/integration/run_tests.py --suite full
-
-# Enable debug logging
-python tests/integration/run_tests.py --suite all --debug
-
-# Run tests in parallel using 4 workers
-python tests/integration/run_tests.py --suite all --parallel --workers 4
-
-# Stop on first failure
-python tests/integration/run_tests.py --suite all --failfast
+rye run pytest tests/integration/ -n 4
 ```
 
 ### Individual Test Execution
 
-Run specific test classes:
+Run specific tests:
 ```bash
-python -m unittest tests.integration.test_komodo_wallet_build.SystemDependenciesTest
-python -m unittest tests.integration.test_komodo_wallet_build.InstallationTest
-python -m unittest tests.integration.test_komodo_wallet_build.EnvironmentSetupTest
+# Flutter-only test
+rye run pytest tests/integration/test_flutter_only_integration.py -v
+
+# Flutter + Android test
+rye run pytest tests/integration/test_flutter_android_integration.py -v
+
+# Fast unit tests only
+rye run pytest tests/integration/test_setup.py tests/integration/test_docs_location.py -v
 ```
+
+## Test Scenarios
+
+### Flutter-Only Integration Test
+- Runs install.sh script
+- Sets up Flutter environment with FVM (platforms: web,linux)
+- Verifies FVM installation and functionality
+- Creates a simple Flutter application
+- Builds application for web platform
+- Verifies build artifacts
+
+### Flutter + Android Integration Test
+- Runs install.sh script
+- Sets up Flutter environment with FVM + Android SDK (platforms: web,android,linux)
+- Verifies FVM and Android SDK installation
+- Creates a simple Flutter application with Android support
+- Builds APK for Android platform
+- Verifies APK creation and Flutter doctor Android detection
+
+### Setup Configuration Test
+- Tests parallel vs sequential setup execution
+- Tests Android SDK configuration options
+- Tests platform selection logic
+- Uses mocking for fast execution
+
+### Documentation Location Test
+- Tests documentation fetching to different target directories
+- Verifies file creation behavior
+- Non-Docker based for speed
 
 ## Test Configuration
 
@@ -112,49 +115,17 @@ Key environment variables used:
 ### Container Configuration
 
 Docker containers are configured with:
-- 2-hour timeout for long builds
+- 1-2 hour timeout for builds
 - Temporary filesystem mounts for performance optimization
-
-## Test Scenarios
-
-### System Dependencies Test
-- Verifies required system tools (git, curl, unzip, etc.)
-- Tests user environment setup
-- Validates sudo access and permissions
-
-### Installation Test
-- Tests install.sh script execution
-- Verifies UV and FVM installation
-- Checks Komodo environment directory creation
-
-### Environment Setup Test
-- Tests Komodo Codex Environment setup with Android support
-- Verifies Android SDK installation
-- Tests Flutter environment configuration with FVM
-
-### Android Environment Test
-- Tests Android environment variables
-- Verifies Android tools accessibility (sdkmanager, adb)
-- Tests Java installation for Android development
-
-### Build Test
-- Tests Komodo Wallet repository cloning
-- Verifies Flutter dependencies installation
-- Tests complete APK build process
-- Verifies APK file creation
-
-### Full Pipeline Test
-- Runs complete end-to-end pipeline
-- Tests all components in sequence
-- Provides comprehensive integration verification
+- Proper user permission setup
 
 ## Debugging
 
 ### Logging Levels
 
-- **WARNING** (default) - Shows only warnings and errors
-- **INFO** (`--verbose`) - Shows progress and status information
-- **DEBUG** (`--debug`) - Shows detailed execution information
+Tests use Rich logging for clear output:
+- **INFO** (default) - Shows progress and status information
+- **DEBUG** - Shows detailed execution information (via pytest -v)
 
 ### Common Issues
 
@@ -171,7 +142,7 @@ Docker containers are configured with:
    - Verify sufficient disk space
    - Check Java installation
 
-4. **APK build failures**
+4. **Flutter build failures**
    - Review Flutter and Android environment setup
    - Check dependency installation logs
    - Verify Android SDK tools accessibility
@@ -197,24 +168,25 @@ docker exec <container_id> env
 
 ### Timeouts
 
-Default timeouts are set conservatively:
-- Install script: 20 minutes
-- Environment setup: 30 minutes
+Default timeouts are set for different operations:
+- Install script: 15 minutes
+- Flutter-only setup: 20 minutes
+- Flutter + Android setup: 40 minutes
 - APK build: 30 minutes
 
 ### Resource Usage
 
-Tests may require significant resources depending on the build complexity:
-- Disk: Sufficient space for Android SDK and dependencies
+Tests may require significant resources:
+- Disk: Sufficient space for Android SDK and dependencies (~8GB)
 - Network: High bandwidth for dependency downloads
+- Memory: 4GB+ recommended for Android builds
 
 ### Optimization Tips
 
-1. **Parallel execution** - Use `--suite` to run only required tests
-   and the `--parallel` flag to run tests concurrently
-2. **Docker layer caching** - Rebuild images only when necessary
-3. **Container reuse** - Consider keeping containers for debugging
-4. **Network caching** - Use local mirrors for dependencies if available
+1. **Parallel execution** - Use `pytest -n <workers>` for concurrent test execution
+2. **Selective testing** - Run only the tests you need during development
+3. **Docker layer caching** - Docker images are cached between runs
+4. **Container reuse** - Consider keeping containers for debugging
 
 ## CI/CD Integration
 
@@ -235,36 +207,28 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          pip install rich requests
+          pip install rye
+          rye sync
       - name: Run integration tests
         run: |
-          python tests/integration/run_tests.py --suite all --verbose --failfast
+          rye run pytest tests/integration/ -v --tb=short
 ```
 
-### Docker Compose Example
+### Expected Runtime
 
-```yaml
-version: '3.8'
-services:
-  test:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - DOCKER_BUILDKIT=1
-    command: python tests/integration/run_tests.py --suite all --verbose
-```
+- **Flutter-only test**: ~8-12 minutes
+- **Flutter + Android test**: ~15-25 minutes
+- **Unit tests**: ~30 seconds
+- **Total runtime**: ~10-15 minutes (sequential), ~8-10 minutes (parallel)
 
 ## Contributing
 
 ### Adding New Tests
 
-1. Extend appropriate test class or create new one
-2. Follow naming convention: `test_<functionality>`
+1. Follow the established patterns in existing test files
+2. Use descriptive test names and docstrings
 3. Add proper logging and error handling
-4. Update test runner configuration if needed
+4. Include verification steps for all major functionality
 
 ### Test Guidelines
 
