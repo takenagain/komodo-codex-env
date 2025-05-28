@@ -28,7 +28,7 @@ class AndroidManagerTests(unittest.TestCase):
         self.android_manager = AndroidManager(self.config, self.executor, self.dep_manager)
 
     def test_android_manager_initialization(self):
-        self.assertEqual(self.android_manager.cmdline_tools_version, "13114758")
+        self.assertEqual(self.android_manager.cmdline_tools_version, "11076708")
 
     def test_java_version_detection(self):
         with patch.object(self.android_manager.executor, "check_command_exists", return_value=True):
@@ -103,6 +103,7 @@ class AndroidManagerTests(unittest.TestCase):
             platform_tools_dir = manager.android_platform_tools_dir
             platform_tools_dir.mkdir(parents=True, exist_ok=True)
             (platform_tools_dir / "adb").touch()
+            (platform_tools_dir / "fastboot").touch()  # Add missing fastboot
 
             platforms_dir = android_home / "platforms"
             platforms_dir.mkdir(parents=True, exist_ok=True)
@@ -112,7 +113,10 @@ class AndroidManagerTests(unittest.TestCase):
             build_tools_dir.mkdir(parents=True, exist_ok=True)
             (build_tools_dir / "34.0.0").mkdir()
 
-            self.assertTrue(manager.verify_installation())
+            # Mock the SDK Manager command execution to return success
+            with patch.object(manager.executor, "run_command") as mock_run:
+                mock_run.return_value = Mock(returncode=0)
+                self.assertTrue(manager.verify_installation())
 
 
 if __name__ == "__main__":

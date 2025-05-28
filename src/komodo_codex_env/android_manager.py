@@ -29,12 +29,11 @@ class AndroidManager:
         self.executor = executor
         self.dep_manager = dep_manager
 
-        # Android SDK paths - use user directory to avoid sudo requirements
+        # Android SDK paths - use config default (/opt/android-sdk) or fallback
         if config.android_home:
             self.android_home = Path(config.android_home)
         else:
-            # Use user directory by default (no sudo required)
-            self.android_home = Path.home() / ".android-sdk"
+            self.android_home = Path("/opt/android-sdk")
         
         self.android_tools_dir = self.android_home / "tools"
         self.android_platform_tools_dir = self.android_home / "platform-tools"

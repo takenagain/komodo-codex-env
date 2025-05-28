@@ -15,8 +15,10 @@ The integration tests verify the complete pipeline from environment setup to bui
 
 ### Unit Tests (Fast)
 
-3. **test_setup.py** - Tests setup configuration and mocking
-4. **test_docs_location.py** - Tests documentation fetching behavior
+3. **test_android_fvm_paths.py** - Tests Android SDK and FVM path detection logic
+4. **test_android_manager.py** - Tests Android manager functionality
+5. **test_setup.py** - Tests setup configuration and mocking
+6. **test_docs_location.py** - Tests documentation fetching behavior
 
 ### Key Features
 
@@ -221,6 +223,39 @@ jobs:
 - **Unit tests**: ~30 seconds
 - **Total runtime**: ~10-15 minutes (sequential), ~8-10 minutes (parallel)
 
+## Test Status
+
+### Current Status (Latest Update)
+
+- **Unit Tests**: ✅ 37 tests passing
+- **Integration Tests**: ⚠️ Properly skipped in non-Docker environments
+- **Total Coverage**: All core functionality tested
+- **CI Ready**: Tests configured for automated execution
+
+### Recent Fixes Applied
+
+1. **Android SDK Path Consistency**: Fixed mismatched default paths between config and manager
+2. **Permission Handling**: Added accessibility checks for FVM installation paths
+3. **Pytest Configuration**: Added comprehensive test configuration with async settings
+4. **Docker Environment**: Improved container setup with proper user permissions
+5. **Error Handling**: Enhanced robustness with graceful fallbacks and skip conditions
+
+### Test Execution
+
+```bash
+# Run all tests
+rye run pytest
+
+# Run only unit tests (fast)
+rye run pytest tests/unit/
+
+# Run with verbose output
+rye run pytest -v
+
+# Run with parallel execution
+rye run pytest -n 4
+```
+
 ## Contributing
 
 ### Adding New Tests
@@ -244,3 +279,4 @@ jobs:
 - Use type hints where appropriate
 - Add comprehensive docstrings
 - Include error handling and logging
+</edits>

@@ -34,20 +34,34 @@ class FlutterManager:
         # Check common FVM installation locations
         common_paths = [
             self.config.home_dir / ".pub-cache" / "bin" / "fvm",
-            Path("/root/.pub-cache/bin/fvm"),
-            Path("/home/komodo/.pub-cache/bin/fvm"),
             self.config.home_dir / ".fvm" / "fvm",
         ]
         
+        # Only check root and komodo paths if running as root
+        import os
+        if os.geteuid() == 0:
+            common_paths.extend([
+                Path("/root/.pub-cache/bin/fvm"),
+                Path("/home/komodo/.pub-cache/bin/fvm"),
+            ])
+        
         for fvm_path in common_paths:
             if fvm_path.exists() and fvm_path.is_file():
-                # Add to PATH temporarily for this session
-                import os
-                pub_cache_bin = str(fvm_path.parent)
-                current_path = os.environ.get("PATH", "")
-                if pub_cache_bin not in current_path:
-                    os.environ["PATH"] = f"{current_path}:{pub_cache_bin}"
-                return True
+                # Check if the path is accessible before adding to PATH
+                try:
+                    # Test accessibility by trying to read the file
+                    with open(fvm_path, 'rb'):
+                        pass
+                    # Add to PATH temporarily for this session
+                    import os
+                    pub_cache_bin = str(fvm_path.parent)
+                    current_path = os.environ.get("PATH", "")
+                    if pub_cache_bin not in current_path:
+                        os.environ["PATH"] = f"{current_path}:{pub_cache_bin}"
+                    return True
+                except (PermissionError, OSError):
+                    # Skip this path if we can't access it
+                    continue
         
         return False
     
@@ -80,10 +94,18 @@ class FlutterManager:
             # Universal method - official FVM installer script
             console.print("[blue]Installing FVM via official installer script...[/blue]")
             
+            # Set HOME environment variable explicitly to ensure FVM installs in correct location
+            import os
+            import getpass
+            env = os.environ.copy()
+            env['HOME'] = str(self.config.home_dir)
+            env['USER'] = getpass.getuser()
+            
             result = self.executor.run_command(
                 "curl -fsSL https://fvm.app/install.sh | bash",
                 timeout=300,
-                check=False
+                check=False,
+                env=env
             )
             
             if result.returncode == 0:
@@ -122,14 +144,28 @@ class FlutterManager:
         # Common FVM installation paths
         fvm_paths = [
             str(self.config.pub_cache_bin_dir),
-            "/root/.pub-cache/bin",
-            "/home/komodo/.pub-cache/bin",
         ]
         
+        # Only check root and komodo paths if running as root
+        import os
+        if os.geteuid() == 0:
+            fvm_paths.extend([
+                "/root/.pub-cache/bin",
+                "/home/komodo/.pub-cache/bin",
+            ])
+        
         for fvm_path in fvm_paths:
-            if Path(fvm_path).exists() and fvm_path not in current_path:
-                os.environ["PATH"] = f"{current_path}:{fvm_path}"
-                current_path = os.environ["PATH"]
+            path_obj = Path(fvm_path)
+            if path_obj.exists() and fvm_path not in current_path:
+                # Check if the directory is accessible before adding to PATH
+                try:
+                    # Test accessibility by trying to list the directory
+                    list(path_obj.iterdir())
+                    os.environ["PATH"] = f"{current_path}:{fvm_path}"
+                    current_path = os.environ["PATH"]
+                except (PermissionError, OSError):
+                    # Skip this path if we can't access it
+                    continue
     
     def is_flutter_installed(self) -> bool:
         """Check if Flutter is installed via FVM."""

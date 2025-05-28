@@ -93,7 +93,8 @@ class CommandExecutor:
         cwd: Optional[Path] = None,
         timeout: Optional[int] = None,
         check: bool = True,
-        capture_output: bool = True
+        capture_output: bool = True,
+        env: Optional[Dict[str, str]] = None
     ) -> subprocess.CompletedProcess:
         """Execute a shell command."""
         console.print(f"[blue]Executing:[/blue] {command}")
@@ -108,7 +109,8 @@ class CommandExecutor:
                 timeout=timeout,
                 check=check,
                 capture_output=capture_output,
-                text=True
+                text=True,
+                env=env
             )
             
             if result.stdout and capture_output:
