@@ -81,6 +81,15 @@ class DockerTestBase(unittest.TestCase):
         self.container_id = result.stdout.strip()
         self.container_name = container_name
         logger.info(f"✓ Container started: {self.container_id[:12]}")
+        
+        # Create testuser if it doesn't exist
+        create_user_cmd = [
+            "docker", "exec", "-u", "root", self.container_id, "bash", "-c",
+            "id testuser || (useradd -m -s /bin/bash testuser && echo 'testuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers)"
+        ]
+        user_result = subprocess.run(create_user_cmd, capture_output=True, text=True)
+        if user_result.returncode != 0:
+            logger.warning(f"Failed to create testuser: {user_result.stderr}")
 
     def tearDown(self):
         """Clean up Docker container after each test."""
@@ -688,6 +697,8 @@ class FullPipelineIntegrationTest(DockerTestBase):
         """Run the install script."""
         command = """
         cd /home/testuser && 
+        # Modify install script to auto-decline the interactive setup prompt
+        sed -i 's/read -p "Do you want to run the full setup now.*/REPLY="n"/' install.sh &&
         /home/testuser/install.sh --debug --flutter-version 3.32.0
         """
         result = self.run_command_in_container(command, user="testuser", timeout=1200)
@@ -697,7 +708,7 @@ class FullPipelineIntegrationTest(DockerTestBase):
     def _verify_post_install(self):
         """Verify post-installation state."""
         checks = [
-            ("UV available", "uv --version"),
+            ("UV available", "source ~/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && uv --version"),
             ("Komodo env exists", "test -d ~/.komodo-codex-env"),
         ]
         
@@ -722,7 +733,9 @@ class FullPipelineIntegrationTest(DockerTestBase):
         """
         result = self.run_command_in_container(command, user="testuser", timeout=1800)
         if result.returncode != 0:
-            raise RuntimeError(f"Komodo setup failed: {result.stderr}")
+            logger.error(f"Komodo setup stdout: {result.stdout}")
+            logger.error(f"Komodo setup stderr: {result.stderr}")
+            raise RuntimeError(f"Komodo setup failed (exit {result.returncode}): {result.stderr[:500]}...")
 
     def _verify_android_environment(self):
         """Verify Android environment is set up."""

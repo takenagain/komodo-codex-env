@@ -355,6 +355,44 @@ install_system_deps() {
     return 0
 }
 
+# Setup /opt directory for Android SDK installation
+setup_opt_directory() {
+    log_step "Setting up /opt directory for Android SDK"
+    
+    local os=$(get_os)
+    
+    # Only needed on Linux systems
+    if [[ "$os" != "linux" ]]; then
+        log_info "Skipping /opt setup on $os"
+        return 0
+    fi
+    
+    # Check if /opt exists and is writable
+    if [[ -w /opt ]]; then
+        log_info "/opt directory is already writable"
+        return 0
+    fi
+    
+    # Create /opt if it doesn't exist and make it writable by current user
+    if [[ ! -d /opt ]]; then
+        log_info "Creating /opt directory..."
+        if ! run_command "sudo mkdir -p /opt" "Failed to create /opt directory"; then
+            log_error "Failed to create /opt directory"
+            return 1
+        fi
+    fi
+    
+    # Make /opt writable by current user (following dockerfile pattern)
+    log_info "Setting up /opt directory permissions for user: $(whoami)"
+    if ! run_command "sudo chown -R $(whoami):$(id -gn) /opt" "Failed to set /opt permissions"; then
+        log_warn "Failed to set /opt permissions. Android SDK installation may require sudo."
+        return 1
+    fi
+    
+    log_success "/opt directory setup completed"
+    return 0
+}
+
 # Python installation and verification
 setup_python() {
     log_step "Setting up Python Environment"
@@ -1056,6 +1094,7 @@ main() {
     # Track installation steps for resume capability
     local install_steps=(
         "install_system_deps"
+        "setup_opt_directory"
         "setup_python"
         "install_uv"
         "install_fvm"

@@ -1,18 +1,24 @@
 """Android SDK Manager for building Android APK targets."""
 
 import os
-import platform
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Optional, List, Dict
-from rich.console import Console
+from typing import Optional, Dict
 
 from .config import EnvironmentConfig
 from .executor import CommandExecutor
 from .dependency_manager import DependencyManager
 
-console = Console()
+try:
+    from rich.console import Console
+    console = Console()
+except ImportError:
+    # Fallback console for environments without rich
+    class SimpleConsole:
+        def print(self, message: str, **kwargs):
+            print(message)
+    console = SimpleConsole()
 
 
 class AndroidManager:
@@ -155,11 +161,20 @@ class AndroidManager:
         self.android_home.mkdir(parents=True, exist_ok=True)
         console.print(f"[blue]Using Android SDK directory: {self.android_home}[/blue]")
 
+        # Clean up any existing cmdline-tools directory to avoid conflicts
+        cmdline_tools_base = self.android_home / "cmdline-tools"
+        if cmdline_tools_base.exists():
+            console.print("[blue]Removing existing cmdline-tools directory...[/blue]")
+            shutil.rmtree(cmdline_tools_base)
+
         # Download command line tools
         tools_url = self.get_cmdline_tools_url()
         tools_zip_path = self.android_home / "cmdline-tools.zip"
 
         try:
+            # Clean up any existing zip file
+            tools_zip_path.unlink(missing_ok=True)
+
             # Download using curl (following dockerfile approach)
             console.print(f"[blue]Downloading from: {tools_url}[/blue]")
             result = self.executor.run_command(
@@ -177,11 +192,10 @@ class AndroidManager:
             # Extract the zip file - following dockerfile approach exactly
             console.print("[blue]Extracting command line tools...[/blue]")
 
-            # Create cmdline-tools directory first
-            cmdline_tools_base = self.android_home / "cmdline-tools"
+            # Create clean cmdline-tools directory
             cmdline_tools_base.mkdir(parents=True, exist_ok=True)
 
-            # Extract zip to cmdline-tools directory
+            # Extract zip directly to cmdline-tools directory
             with zipfile.ZipFile(tools_zip_path, 'r') as zip_ref:
                 zip_ref.extractall(cmdline_tools_base)
 
@@ -190,15 +204,14 @@ class AndroidManager:
             target_latest_dir = cmdline_tools_base / "latest"
 
             if extracted_cmdline_dir.exists():
-                # Remove target if it exists
-                if target_latest_dir.exists():
-                    shutil.rmtree(target_latest_dir)
-
-                # Move cmdline-tools to latest
+                # Move cmdline-tools to latest (target should not exist at this point)
                 shutil.move(str(extracted_cmdline_dir), str(target_latest_dir))
                 console.print("[blue]✓ Moved cmdline-tools to latest directory[/blue]")
             else:
                 console.print("[red]✗ Expected cmdline-tools directory not found after extraction[/red]")
+                # Show what was actually extracted for debugging
+                extracted_contents = list(cmdline_tools_base.iterdir())
+                console.print(f"[red]Found in extraction: {[p.name for p in extracted_contents]}[/red]")
                 return False
 
             # Clean up
@@ -215,11 +228,18 @@ class AndroidManager:
             else:
                 console.print("[red]✗ SDK manager not found after extraction[/red]")
                 console.print(f"[red]Expected at: {sdkmanager_path}[/red]")
+                # Debug: show what's in the latest directory
+                if target_latest_dir.exists():
+                    latest_contents = list(target_latest_dir.iterdir())
+                    console.print(f"[red]Contents of latest dir: {[p.name for p in latest_contents]}[/red]")
                 return False
 
         except Exception as e:
             console.print(f"[red]✗ Failed to download/extract command line tools: {e}[/red]")
             tools_zip_path.unlink(missing_ok=True)
+            # Clean up cmdline-tools directory on error
+            if cmdline_tools_base.exists():
+                shutil.rmtree(cmdline_tools_base)
             return False
 
     def setup_environment_variables(self) -> bool:
@@ -308,17 +328,12 @@ class AndroidManager:
         ]
 
         try:
-            # Set up environment for sdkmanager (following dockerfile approach)
-            env = os.environ.copy()
-            env.update(self._get_android_env())
-            
             # Accept licenses first (following dockerfile approach)
             console.print("[blue]Accepting Android SDK licenses...[/blue]")
             result = self.executor.run_command(
                 f"yes | {sdkmanager_path} --licenses",
                 check=False,
-                timeout=120,
-                env=env
+                timeout=60
             )
 
             if result.returncode != 0:
@@ -331,8 +346,7 @@ class AndroidManager:
                 result = self.executor.run_command(
                     f'"{sdkmanager_path}" "{package}"',
                     check=False,
-                    timeout=600,  # Increased timeout for large packages
-                    env=env
+                    timeout=300
                 )
 
                 if result.returncode == 0:
@@ -350,8 +364,7 @@ class AndroidManager:
                 result = self.executor.run_command(
                     f'"{sdkmanager_path}" "{package}"',
                     check=False,
-                    timeout=600,
-                    env=env
+                    timeout=300
                 )
 
                 if result.returncode == 0:
@@ -450,7 +463,6 @@ class AndroidManager:
             try:
                 result = self.executor.run_command(
                     f'"{sdkmanager_path}" --list',
-                    env=self._get_android_env(),
                     check=False,
                     timeout=30
                 )
@@ -561,8 +573,19 @@ class AndroidManager:
         console.print("[blue]Setting up Android SDK directories...[/blue]")
 
         try:
-            # Create the directory structure in user space (no sudo required)
+            # Check if /opt/android-sdk is writable (should be set up by install.sh)
+            if str(self.android_home).startswith('/opt/') and not os.access(str(self.android_home.parent), os.W_OK):
+                console.print(f"[red]✗ {self.android_home.parent} is not writable[/red]")
+                console.print("[red]Please ensure install.sh was run to set up /opt directory permissions[/red]")
+                return False
+
+            # Create the directory structure
             self.android_home.mkdir(parents=True, exist_ok=True)
+            
+            # Verify we can write to the directory
+            if not os.access(str(self.android_home), os.W_OK):
+                console.print(f"[red]✗ Cannot write to {self.android_home}[/red]")
+                return False
             
             # Create additional required directories
             (self.android_home / "platforms").mkdir(exist_ok=True)
@@ -570,9 +593,13 @@ class AndroidManager:
             (self.android_home / "platform-tools").mkdir(exist_ok=True)
             
             console.print(f"[green]✓ Android SDK directory ready: {self.android_home}[/green]")
-            console.print(f"[blue]SDK will be accessible without sudo requirements[/blue]")
+            console.print("[blue]SDK will be accessible without sudo requirements[/blue]")
             return True
 
+        except PermissionError as e:
+            console.print(f"[red]✗ Permission denied creating Android directories: {e}[/red]")
+            console.print("[red]Please ensure install.sh was run to set up /opt directory permissions[/red]")
+            return False
         except Exception as e:
             console.print(f"[red]✗ Failed to setup Android directories: {e}[/red]")
             return False

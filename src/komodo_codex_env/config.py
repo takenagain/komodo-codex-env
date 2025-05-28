@@ -70,8 +70,8 @@ class EnvironmentConfig:
             self.initial_dir = Path.cwd()
 
         if self.android_home is None:
-            # Default to user directory to avoid sudo requirements
-            self.android_home = Path.home() / ".android-sdk"
+            # Default to /opt/android-sdk for system-wide installation
+            self.android_home = Path("/opt/android-sdk")
 
     @property
     def script_gist_url(self) -> str:
