@@ -19,7 +19,7 @@
 # 7. setup_shell_integration - Setup shell aliases and PATH modifications
 # 
 # After installation, the CLI runs with these default values:
-# - kce-full-setup uses: --platforms web,android,linux (includes Android SDK)
+# - kce-full-setup uses: --platforms web (web only by default, use --platforms web,android,linux for full setup)
 # - Flutter version: 3.32.0 (configurable via --flutter-version)
 # - Install method: precompiled (faster than building from source)
 # - KDF docs: enabled (--kdf-docs flag)
@@ -51,6 +51,7 @@ REQUIRED_PYTHON_VERSION="3.13"
 ALLOW_ROOT=false
 DEBUG=false
 FLUTTER_VERSION="3.32.0"
+PLATFORMS="web"
 
 # Help function
 show_help() {
@@ -62,6 +63,9 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  --flutter-version VERSION    Specify Flutter version to install (default: $FLUTTER_VERSION)"
+    echo "  --platforms PLATFORMS        Comma-separated list of platforms (default: $PLATFORMS)"
+    echo "                              Available: web,android,linux,macos,windows,ios"
+    echo "  --no-android                 Exclude Android platform (equivalent to --platforms web)"
     echo "  --allow-root                 Allow installation as root user"
     echo "  --debug                      Enable debug mode with verbose output"
     echo "  --help, -h                   Show this help message"
@@ -70,6 +74,12 @@ show_help() {
     echo "  # Install with Flutter 3.29.3"
     echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --flutter-version 3.29.3"
     echo ""
+    echo "  # Install with specific platforms"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --platforms web,android,linux"
+    echo ""
+    echo "  # Install web only (no Android)"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --no-android"
+    echo ""
     echo "  # Install with debug output"
     echo "  bash <(curl -fsSL https://raw.githubusercontent.com/takenagain/komodo-codex-env/main/install.sh) --debug"
     echo ""
@@ -77,15 +87,19 @@ show_help() {
     echo ""
     echo "User Management:"
     echo "  - Automatically detects and switches to non-root users (ubuntu, ec2-user, etc.)"
-    echo "  - Installs Android SDK alongside FVM by default"
+    echo "  - Installs web platform by default (Android SDK optional)"
     echo "  - Configures CLI with optimal default settings"
     echo ""
     echo "Default Installation Includes:"
     echo "  - FVM (Flutter Version Management)"
-    echo "  - Android SDK (via --platforms android)"
-    echo "  - Web and Linux platform support" 
+    echo "  - Web platform support (default)"
     echo "  - KDF documentation"
     echo "  - Shell integration and aliases"
+    echo ""
+    echo "Optional Platform Support:"
+    echo "  - Android SDK (use --platforms web,android)"
+    echo "  - Linux desktop (use --platforms web,linux)"
+    echo "  - Multiple platforms (use --platforms web,android,linux)"
 }
 
 # Parse command line arguments
@@ -117,6 +131,29 @@ while [[ $# -gt 0 ]]; do
                 echo "Example: --flutter-version=3.29.3"
                 exit 1
             fi
+            shift
+            ;;
+        --platforms)
+            if [[ -n "${2:-}" ]]; then
+                PLATFORMS="$2"
+                shift 2
+            else
+                echo "Error: --platforms requires a comma-separated list argument"
+                echo "Example: --platforms web,android,linux"
+                exit 1
+            fi
+            ;;
+        --platforms=*)
+            PLATFORMS="${1#*=}"
+            if [[ -z "$PLATFORMS" ]]; then
+                echo "Error: --platforms requires a comma-separated list argument"
+                echo "Example: --platforms=web,android,linux"
+                exit 1
+            fi
+            shift
+            ;;
+        --no-android)
+            PLATFORMS="web"
             shift
             ;;
         --help|-h)
@@ -887,11 +924,43 @@ alias dart="fvm dart"
 
 # Function for easy setup with all options (uses FVM)
 # This function runs the CLI setup with default values including:
-# - Android platform support (installs Android SDK automatically)
-# - Web and Linux platform support
+# - Configurable platform support (web by default)
 # - KDF documentation download
 # - Verbose output for debugging
 kce-full-setup() {
+    local flutter_version="${1:-$FLUTTER_VERSION}"
+    komodo-codex-env setup \
+        --flutter-version "$flutter_version" \
+        --install-method precompiled \
+        --platforms "$PLATFORMS" \
+        --kdf-docs \
+        --verbose
+}
+
+# Convenience function for web-only setup
+kce-web-setup() {
+    local flutter_version="${1:-$FLUTTER_VERSION}"
+    komodo-codex-env setup \
+        --flutter-version "$flutter_version" \
+        --install-method precompiled \
+        --platforms web \
+        --kdf-docs \
+        --verbose
+}
+
+# Convenience function for full mobile setup (web + android)
+kce-mobile-setup() {
+    local flutter_version="${1:-$FLUTTER_VERSION}"
+    komodo-codex-env setup \
+        --flutter-version "$flutter_version" \
+        --install-method precompiled \
+        --platforms web,android \
+        --kdf-docs \
+        --verbose
+}
+
+# Convenience function for all platforms setup
+kce-all-platforms-setup() {
     local flutter_version="${1:-$FLUTTER_VERSION}"
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
@@ -1135,7 +1204,10 @@ main() {
         log_info "Available commands:"
         log_info "  kce                 - Run komodo-codex-env"
         log_info "  kce-setup          - Run basic setup"
-        log_info "  kce-full-setup [version] - Run setup with all options enabled (with FVM)"
+        log_info "  kce-full-setup [version] - Run setup with configured platforms (with FVM)"
+        log_info "  kce-web-setup [version] - Run web-only setup (fastest)"
+        log_info "  kce-mobile-setup [version] - Run web + Android setup"
+        log_info "  kce-all-platforms-setup [version] - Run setup with web + Android + Linux"
         log_info "  kce-status         - Check Flutter status"
         log_info "  kce-docs           - Fetch documentation"
         log_info "  kce-deps           - Check dependencies"
@@ -1152,8 +1224,12 @@ main() {
         log_info ""
         log_info "Flutter version management:"
         log_info "  Current version: $FLUTTER_VERSION"
-        log_info "  Change version: kce-full-setup <version>"
-        log_info "  Example: kce-full-setup 3.29.3"
+        log_info "  Current platforms: $PLATFORMS"
+        log_info "  Examples:"
+        log_info "    kce-web-setup 3.29.3         - Web only (fastest)"
+        log_info "    kce-mobile-setup 3.29.3      - Web + Android"
+        log_info "    kce-all-platforms-setup 3.29.3 - Web + Android + Linux"
+        log_info "    kce-full-setup 3.29.3        - Use configured platforms"
         log_info "  List versions: kce-fvm-releases"
         
         # FVM verification note
@@ -1164,11 +1240,11 @@ main() {
         
         # Offer to run setup immediately
         echo ""
-        read -p "Do you want to run the full setup now? This will install Flutter $FLUTTER_VERSION and Android SDK with all features enabled. (Y/n): " -n 1 -r
+        read -p "Do you want to run the full setup now? This will install Flutter $FLUTTER_VERSION with platforms: $PLATFORMS. (Y/n): " -n 1 -r
         echo
         if [[ -z "$REPLY" ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "Running full setup with Flutter version $FLUTTER_VERSION..."
-            log_info "This includes: Flutter $FLUTTER_VERSION, Android SDK, Web/Linux platforms, and KDF docs"
+            log_info "This includes: Flutter $FLUTTER_VERSION, platforms ($PLATFORMS), and KDF docs"
             source "${INSTALL_DIR}/setup_env.sh"
             kce-full-setup "$FLUTTER_VERSION"
         else

@@ -70,3 +70,9 @@ markers = [
     "unit: marks tests as unit tests",
     "slow: marks tests as slow running",
 ]
+
+[tool.rye]
+dev-dependencies = [
+    "pytest>=8.3.5",
+    "pytest-xdist>=3.7.0",
+]
