@@ -30,8 +30,8 @@ class EnvironmentConfig:
     install_android_sdk: bool = True
     android_api_level: str = "35"
     android_build_tools_version: str = "35.0.1"
-    android_sdk_tools_version: str = "13114758"  # Command line tools version
-    android_ndk_version: str = "28.1.13356709"  # NDK version
+    android_sdk_tools_version: str = "11076708"  # Command line tools version
+    android_ndk_version: str = "27.2.12479018"  # NDK version
 
     # Git configuration
     fetch_all_remote_branches: bool = True
@@ -70,8 +70,8 @@ class EnvironmentConfig:
             self.initial_dir = Path.cwd()
 
         if self.android_home is None:
-            # Default to system-wide installation path
-            self.android_home = Path("/opt/android-sdk")
+            # Default to user directory to avoid sudo requirements
+            self.android_home = Path.home() / ".android-sdk"
 
     @property
     def script_gist_url(self) -> str:

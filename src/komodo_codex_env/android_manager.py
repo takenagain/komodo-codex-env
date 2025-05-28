@@ -17,24 +17,29 @@ console = Console()
 
 class AndroidManager:
     """Manages Android SDK installation and configuration for Flutter Android builds."""
-    
+
     def __init__(self, config: EnvironmentConfig, executor: CommandExecutor, dep_manager: DependencyManager):
         self.config = config
         self.executor = executor
         self.dep_manager = dep_manager
+
+        # Android SDK paths - use user directory to avoid sudo requirements
+        if config.android_home:
+            self.android_home = Path(config.android_home)
+        else:
+            # Use user directory by default (no sudo required)
+            self.android_home = Path.home() / ".android-sdk"
         
-        # Android SDK paths - default to config value or system path
-        self.android_home = config.android_home if config.android_home else Path("/opt/android-sdk")
         self.android_tools_dir = self.android_home / "tools"
         self.android_platform_tools_dir = self.android_home / "platform-tools"
         self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"
-        
+
         # Version constants matching the working Dockerfile and config
         self.cmdline_tools_version = config.android_sdk_tools_version  # Use config value
         self.android_platform_version = config.android_api_level    # Use config value
         self.android_build_tools_version = config.android_build_tools_version  # Use config value
         self.android_ndk_version = config.android_ndk_version   # Use config value
-        
+
     def _get_android_env(self) -> Dict[str, str]:
         """Get Android environment variables."""
         return {
@@ -42,7 +47,7 @@ class AndroidManager:
             "ANDROID_SDK_ROOT": str(self.android_home),
             "PATH": f"{self.android_cmdline_tools_dir / 'bin'}:{self.android_platform_tools_dir}:{os.environ.get('PATH', '')}"
         }
-    
+
     def is_android_sdk_installed(self) -> bool:
         """Check if Android SDK is already installed."""
         return (
@@ -50,16 +55,16 @@ class AndroidManager:
             self.android_cmdline_tools_dir.exists() and
             (self.android_cmdline_tools_dir / "bin" / "sdkmanager").exists()
         )
-    
+
     def is_java_installed(self) -> bool:
         """Check if Java/JDK is installed."""
         return self.executor.check_command_exists("java") and self.executor.check_command_exists("javac")
-    
+
     def get_java_version(self) -> Optional[str]:
         """Get installed Java version."""
         if not self.is_java_installed():
             return None
-        
+
         try:
             result = self.executor.run_command("java -version", check=False, capture_output=True)
             if result.returncode == 0:
@@ -78,16 +83,16 @@ class AndroidManager:
         except Exception:
             pass
         return None
-    
+
     def install_java(self) -> bool:
         """Install Java Development Kit (JDK)."""
         console.print("[blue]Installing Java Development Kit...[/blue]")
-        
+
         system_info = self.dep_manager.get_system_info()
         os_name = system_info.get("os", "").lower()
-        
+
         java_packages = []
-        
+
         if os_name == "linux":
             # Use OpenJDK 21 (matching the working Dockerfile)
             java_packages = ["openjdk-21-jdk"]
@@ -106,14 +111,14 @@ class AndroidManager:
                         return True
                 except Exception:
                     pass
-            
+
             console.print("[yellow]Please install Java manually on macOS[/yellow]")
             console.print("[blue]Visit: https://adoptium.net/temurin/releases/[/blue]")
             return False
         else:
             console.print(f"[yellow]Unsupported OS for automatic Java installation: {os_name}[/yellow]")
             return False
-        
+
         # Install Java packages on Linux
         if java_packages:
             success = self.dep_manager.install_dependencies(java_packages)
@@ -122,16 +127,16 @@ class AndroidManager:
             else:
                 console.print("[red]✗ Failed to install Java Development Kit[/red]")
             return success
-        
+
         return False
-    
+
     def get_cmdline_tools_url(self) -> str:
         """Get the download URL for Android command line tools."""
         system_info = self.dep_manager.get_system_info()
         os_name = system_info.get("os", "").lower()
-        
+
         base_url = "https://dl.google.com/android/repository"
-        
+
         if os_name == "linux":
             return f"{base_url}/commandlinetools-linux-{self.cmdline_tools_version}_latest.zip"
         elif os_name == "darwin":  # macOS
@@ -141,186 +146,248 @@ class AndroidManager:
         else:
             # Default to Linux
             return f"{base_url}/commandlinetools-linux-{self.cmdline_tools_version}_latest.zip"
-    
+
     def download_and_extract_cmdline_tools(self) -> bool:
-        """Download and extract Android command line tools."""
+        """Download and extract Android command line tools (following dockerfile approach)."""
         console.print("[blue]Downloading Android SDK command line tools...[/blue]")
-        
-        # Create Android SDK directory
+
+        # Create Android SDK directory in user space (no sudo required)
         self.android_home.mkdir(parents=True, exist_ok=True)
-        
+        console.print(f"[blue]Using Android SDK directory: {self.android_home}[/blue]")
+
         # Download command line tools
         tools_url = self.get_cmdline_tools_url()
         tools_zip_path = self.android_home / "cmdline-tools.zip"
-        
+
         try:
-            # Download using curl
+            # Download using curl (following dockerfile approach)
+            console.print(f"[blue]Downloading from: {tools_url}[/blue]")
             result = self.executor.run_command(
                 f"curl -L -o {tools_zip_path} {tools_url}",
                 timeout=300  # 5 minutes timeout for download
             )
-            
+
             if result.returncode != 0:
                 console.print("[red]✗ Failed to download command line tools[/red]")
+                console.print(f"[red]Error: {result.stderr if result.stderr else 'Unknown error'}[/red]")
                 return False
-            
-            # Extract the zip file
+
+            console.print("[green]✓ Command line tools downloaded successfully[/green]")
+
+            # Extract the zip file - following dockerfile approach exactly
             console.print("[blue]Extracting command line tools...[/blue]")
+
+            # Create cmdline-tools directory first
+            cmdline_tools_base = self.android_home / "cmdline-tools"
+            cmdline_tools_base.mkdir(parents=True, exist_ok=True)
+
+            # Extract zip to cmdline-tools directory
             with zipfile.ZipFile(tools_zip_path, 'r') as zip_ref:
-                zip_ref.extractall(self.android_home)
-            
-            # Move cmdline-tools to the correct location
-            extracted_tools_dir = self.android_home / "cmdline-tools"
-            target_tools_dir = self.android_home / "cmdline-tools" / "latest"
-            
-            # Create the latest directory structure
-            target_tools_dir.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Move contents from extracted directory to latest
-            if extracted_tools_dir.exists():
-                # If extraction created cmdline-tools directory directly
-                if (extracted_tools_dir / "bin").exists():
-                    shutil.move(str(extracted_tools_dir), str(target_tools_dir))
-                else:
-                    # Contents are in subdirectory
-                    for item in extracted_tools_dir.iterdir():
-                        if item.is_dir() and (item / "bin").exists():
-                            shutil.move(str(item), str(target_tools_dir))
-                            break
-            
+                zip_ref.extractall(cmdline_tools_base)
+
+            # Following dockerfile: mv cmdline-tools/cmdline-tools cmdline-tools/latest
+            extracted_cmdline_dir = cmdline_tools_base / "cmdline-tools"
+            target_latest_dir = cmdline_tools_base / "latest"
+
+            if extracted_cmdline_dir.exists():
+                # Remove target if it exists
+                if target_latest_dir.exists():
+                    shutil.rmtree(target_latest_dir)
+
+                # Move cmdline-tools to latest
+                shutil.move(str(extracted_cmdline_dir), str(target_latest_dir))
+                console.print("[blue]✓ Moved cmdline-tools to latest directory[/blue]")
+            else:
+                console.print("[red]✗ Expected cmdline-tools directory not found after extraction[/red]")
+                return False
+
             # Clean up
             tools_zip_path.unlink(missing_ok=True)
-            
+
             # Verify installation
-            sdkmanager_path = target_tools_dir / "bin" / "sdkmanager"
+            sdkmanager_path = target_latest_dir / "bin" / "sdkmanager"
             if sdkmanager_path.exists():
-                console.print("[green]✓ Android command line tools extracted[/green]")
+                # Make sdkmanager executable
+                import stat
+                sdkmanager_path.chmod(sdkmanager_path.stat().st_mode | stat.S_IEXEC)
+                console.print("[green]✓ Android command line tools extracted successfully[/green]")
                 return True
             else:
                 console.print("[red]✗ SDK manager not found after extraction[/red]")
+                console.print(f"[red]Expected at: {sdkmanager_path}[/red]")
                 return False
-                
+
         except Exception as e:
             console.print(f"[red]✗ Failed to download/extract command line tools: {e}[/red]")
             tools_zip_path.unlink(missing_ok=True)
             return False
-    
+
     def setup_environment_variables(self) -> bool:
         """Set up Android SDK environment variables."""
         console.print("[blue]Setting up Android environment variables...[/blue]")
-        
+
         profile_path = self.config.get_shell_profile()
-        
+
         # Environment variables to add
         env_vars = {
             "ANDROID_HOME": str(self.android_home),
             "ANDROID_SDK_ROOT": str(self.android_home),
         }
         
-        # Paths to add
-        paths_to_add = [
+        console.print(f"[blue]Setting ANDROID_HOME to: {self.android_home}[/blue]")
+
+        # Paths to add (only existing directories)
+        paths_to_add = []
+        potential_paths = [
             str(self.android_cmdline_tools_dir / "bin"),
             str(self.android_platform_tools_dir),
             str(self.android_tools_dir / "bin"),
         ]
-        
+
+        for path in potential_paths:
+            if Path(path).exists():
+                paths_to_add.append(path)
+
         try:
-            # Add environment variables
+            # Set environment variables immediately for current process
+            for var_name, var_value in env_vars.items():
+                os.environ[var_name] = var_value
+                console.print(f"[green]✓ Set {var_name}={var_value}[/green]")
+
+            # Add environment variables to profile
             for var_name, var_value in env_vars.items():
                 success = self.dep_manager.add_environment_variable(var_name, var_value, profile_path)
                 if not success:
-                    console.print(f"[yellow]⚠ Failed to set {var_name}[/yellow]")
-            
-            # Add paths
+                    console.print(f"[yellow]⚠ Failed to persist {var_name} to profile[/yellow]")
+
+            # Add paths to current PATH
+            current_path = os.environ.get("PATH", "")
+            for path in paths_to_add:
+                if path not in current_path:
+                    os.environ["PATH"] = f"{path}:{current_path}"
+                    console.print(f"[green]✓ Added {path} to current PATH[/green]")
+
+            # Add paths to profile for persistence
             for path in paths_to_add:
                 success = self.dep_manager.add_to_path(path, profile_path)
                 if not success:
-                    console.print(f"[yellow]⚠ Failed to add {path} to PATH[/yellow]")
-            
+                    console.print(f"[yellow]⚠ Failed to persist {path} to profile[/yellow]")
+
             console.print("[green]✓ Android environment variables configured[/green]")
             return True
-            
         except Exception as e:
             console.print(f"[red]✗ Failed to setup environment variables: {e}[/red]")
             return False
-    
+
     def install_sdk_packages(self) -> bool:
         """Install essential Android SDK packages."""
         console.print("[blue]Installing Android SDK packages...[/blue]")
-        
-        # Set environment variables for this session
-        env = os.environ.copy()
-        env["ANDROID_HOME"] = str(self.android_home)
-        env["ANDROID_SDK_ROOT"] = str(self.android_home)
-        
+
         sdkmanager_path = self.android_cmdline_tools_dir / "bin" / "sdkmanager"
-        
+
+        # Verify sdkmanager exists
+        if not sdkmanager_path.exists():
+            console.print(f"[red]✗ SDK manager not found at {sdkmanager_path}[/red]")
+            return False
+
         # Essential packages for Flutter Android development (matching Dockerfile)
         packages = [
             "platform-tools",
-            f"platforms;android-{self.android_platform_version}",  # Android 15
+            f"platforms;android-{self.android_platform_version}",  # Latest platform
             "platforms;android-34",  # Previous stable API level (Android 14)
-            "platforms;android-33",  # Android 13 for compatibility
             f"build-tools;{self.android_build_tools_version}",    # Latest build tools
             "build-tools;34.0.0",    # Previous build tools for compatibility
-            "emulator",
-            f"system-images;android-{self.android_platform_version};google_apis;x86_64",  # Latest emulator image
-            "cmdline-tools;latest",  # Ensure latest command line tools
-            f"ndk;{self.android_ndk_version}",  # NDK for native development
         ]
-        
+
+        # Optional packages (install if possible but don't fail if they don't work)
+        optional_packages = [
+            "emulator",
+            f"system-images;android-{self.android_platform_version};google_apis;x86_64",
+            "cmdline-tools;latest",
+            f"ndk;{self.android_ndk_version}",
+        ]
+
         try:
-            # Accept licenses first
+            # Set up environment for sdkmanager (following dockerfile approach)
+            env = os.environ.copy()
+            env.update(self._get_android_env())
+            
+            # Accept licenses first (following dockerfile approach)
             console.print("[blue]Accepting Android SDK licenses...[/blue]")
-            self.executor.run_command(
+            result = self.executor.run_command(
                 f"yes | {sdkmanager_path} --licenses",
                 check=False,
-                timeout=60
+                timeout=120,
+                env=env
             )
-            
-            # Install packages
+
+            if result.returncode != 0:
+                console.print("[yellow]⚠ License acceptance may have had issues, continuing...[/yellow]")
+
+            # Install essential packages
+            console.print("[blue]Installing essential SDK packages...[/blue]")
             for package in packages:
                 console.print(f"[blue]Installing {package}...[/blue]")
                 result = self.executor.run_command(
-                    f"{sdkmanager_path} '{package}'",
+                    f'"{sdkmanager_path}" "{package}"',
                     check=False,
-                    timeout=300
+                    timeout=600,  # Increased timeout for large packages
+                    env=env
                 )
-                
+
                 if result.returncode == 0:
                     console.print(f"[green]✓ {package} installed[/green]")
                 else:
-                    console.print(f"[yellow]⚠ Failed to install {package}[/yellow]")
-            
+                    console.print(f"[red]✗ Failed to install {package}[/red]")
+                    console.print(f"[red]Error: {result.stderr if result.stderr else 'Unknown error'}[/red]")
+                    # Don't fail completely, continue with other packages
+                    console.print("[yellow]⚠ Continuing with remaining packages...[/yellow]")
+
+            # Install optional packages (best effort)
+            console.print("[blue]Installing optional SDK packages...[/blue]")
+            for package in optional_packages:
+                console.print(f"[blue]Installing {package}...[/blue]")
+                result = self.executor.run_command(
+                    f'"{sdkmanager_path}" "{package}"',
+                    check=False,
+                    timeout=600,
+                    env=env
+                )
+
+                if result.returncode == 0:
+                    console.print(f"[green]✓ {package} installed[/green]")
+                else:
+                    console.print(f"[yellow]⚠ Failed to install optional package {package}[/yellow]")
+
             console.print("[green]✓ Android SDK packages installation completed[/green]")
             return True
-            
+
         except Exception as e:
             console.print(f"[red]✗ Failed to install SDK packages: {e}[/red]")
             return False
-    
+
     def install_system_dependencies(self) -> bool:
         """Install system dependencies required for Android development (matching Dockerfile)."""
         console.print("[blue]Installing system dependencies for Android development...[/blue]")
-        
+
         system_info = self.dep_manager.get_system_info()
         os_name = system_info.get("os", "").lower()
-        
+
         if os_name == "linux":
             # System packages from the working Dockerfile
             system_packages = [
-                "jq", "nodejs", "npm", "wget", "zip", "unzip", "git", 
-                "openssh-client", "curl", "bc", "software-properties-common", 
+                "jq", "nodejs", "npm", "wget", "zip", "unzip", "git",
+                "openssh-client", "curl", "bc", "software-properties-common",
                 "build-essential", "ruby-full", "ruby-bundler", "libstdc++6",
                 "libpulse0", "libglu1-mesa", "locales", "lcov", "libsqlite3-dev",
                 # For x86 emulators
-                "libxtst6", "libnss3-dev", "libnspr4", "libxss1", 
+                "libxtst6", "libnss3-dev", "libnspr4", "libxss1",
                 "libatk-bridge2.0-0", "libgtk-3-0", "libgdk-pixbuf2.0-0",
                 # For Linux builds (Flutter desktop)
                 "xz-utils", "clang", "cmake", "ninja-build", "pkg-config",
                 "libgtk-3-dev", "liblzma-dev", "libstdc++-12-dev"
             ]
-            
+
             success = self.dep_manager.install_dependencies(system_packages)
             if success:
                 console.print("[green]✓ System dependencies installed[/green]")
@@ -330,50 +397,99 @@ class AndroidManager:
         else:
             console.print(f"[yellow]System dependency installation not implemented for {os_name}[/yellow]")
             return True  # Don't fail on non-Linux systems
-    
+
     def verify_installation(self) -> bool:
         """Verify Android SDK installation."""
         console.print("[blue]Verifying Android SDK installation...[/blue]")
-        
+
         # Check if essential tools exist
         essential_tools = [
-            self.android_cmdline_tools_dir / "bin" / "sdkmanager",
-            self.android_platform_tools_dir / "adb",
+            (self.android_cmdline_tools_dir / "bin" / "sdkmanager", "SDK Manager"),
+            (self.android_platform_tools_dir / "adb", "ADB"),
+            (self.android_platform_tools_dir / "fastboot", "Fastboot"),
         ]
-        
-        for tool in essential_tools:
-            if not tool.exists():
-                console.print(f"[red]✗ Missing tool: {tool}[/red]")
-                return False
-        
-        # Check if platforms directory exists
+
+        all_good = True
+
+        for tool_path, tool_name in essential_tools:
+            if tool_path.exists():
+                console.print(f"[green]✓ {tool_name} found at {tool_path}[/green]")
+            else:
+                console.print(f"[red]✗ {tool_name} not found at {tool_path}[/red]")
+                all_good = False
+
+        # Check if platforms are installed
         platforms_dir = self.android_home / "platforms"
-        if not platforms_dir.exists() or not any(platforms_dir.iterdir()):
-            console.print("[red]✗ No Android platforms installed[/red]")
-            return False
-        
-        # Check if build-tools directory exists
+        if platforms_dir.exists():
+            platforms = list(platforms_dir.glob("android-*"))
+            if platforms:
+                console.print(f"[green]✓ Found {len(platforms)} platform(s): {', '.join(p.name for p in platforms)}[/green]")
+            else:
+                console.print("[yellow]⚠ No platforms installed[/yellow]")
+                all_good = False
+        else:
+            console.print("[red]✗ Platforms directory not found[/red]")
+            all_good = False
+
+        # Check if build-tools are installed
         build_tools_dir = self.android_home / "build-tools"
-        if not build_tools_dir.exists() or not any(build_tools_dir.iterdir()):
-            console.print("[red]✗ No Android build tools installed[/red]")
-            return False
-        
-        console.print("[green]✓ Android SDK installation verified[/green]")
-        return True
-    
+        if build_tools_dir.exists():
+            build_tools = list(build_tools_dir.glob("*"))
+            if build_tools:
+                console.print(f"[green]✓ Found {len(build_tools)} build-tools version(s): {', '.join(bt.name for bt in build_tools)}[/green]")
+            else:
+                console.print("[yellow]⚠ No build-tools installed[/yellow]")
+                all_good = False
+        else:
+            console.print("[red]✗ Build-tools directory not found[/red]")
+            all_good = False
+
+        # Test sdkmanager command
+        sdkmanager_path = self.android_cmdline_tools_dir / "bin" / "sdkmanager"
+        if sdkmanager_path.exists():
+            try:
+                result = self.executor.run_command(
+                    f'"{sdkmanager_path}" --list',
+                    env=self._get_android_env(),
+                    check=False,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    console.print("[green]✓ SDK Manager command working[/green]")
+                else:
+                    console.print("[yellow]⚠ SDK Manager command failed[/yellow]")
+                    all_good = False
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not test SDK Manager: {e}[/yellow]")
+                all_good = False
+
+        if all_good:
+            console.print("[green]✓ Android SDK installation verified successfully[/green]")
+        else:
+            console.print("[yellow]⚠ Android SDK verification completed with warnings[/yellow]")
+
+        return all_good
+
     def install_android_sdk(self) -> bool:
         """Complete Android SDK installation process."""
         console.print("[bold blue]Installing Android SDK...[/bold blue]")
-        
+        console.print(f"[blue]Target installation directory: {self.android_home}[/blue]")
+        console.print(f"[blue]Command line tools will be at: {self.android_cmdline_tools_dir}[/blue]")
+
         # Check if already installed
         if self.is_android_sdk_installed():
             console.print("[green]✓ Android SDK already installed[/green]")
             return self.verify_installation()
-        
+
+        # Setup Android directories first (in user space)
+        if not self.setup_android_directories():
+            console.print("[red]✗ Failed to setup Android directories[/red]")
+            return False
+
         # Install system dependencies first
         if not self.install_system_dependencies():
             console.print("[yellow]⚠ System dependencies installation had issues, continuing...[/yellow]")
-        
+
         # Install Java if not present
         if not self.is_java_installed():
             if not self.install_java():
@@ -382,30 +498,38 @@ class AndroidManager:
         else:
             java_version = self.get_java_version()
             console.print(f"[green]✓ Java already installed: {java_version}[/green]")
-        
+
         # Download and extract command line tools
         if not self.download_and_extract_cmdline_tools():
             return False
-        
+
         # Setup environment variables
         if not self.setup_environment_variables():
+            console.print("[red]✗ Failed to setup environment variables[/red]")
             return False
-        
+
         # Install SDK packages
         if not self.install_sdk_packages():
-            return False
-        
+            console.print("[yellow]⚠ SDK packages installation had issues, but continuing...[/yellow]")
+
         # Verify installation
-        return self.verify_installation()
-    
+        result = self.verify_installation()
+        
+        if result:
+            console.print("[green]✓ Android SDK installation completed successfully![/green]")
+            console.print(f"[blue]Android SDK location: {self.android_home}[/blue]")
+            console.print(f"[blue]To use with Flutter, set: export ANDROID_HOME={self.android_home}[/blue]")
+        
+        return result
+
     def get_android_info(self) -> Dict[str, str]:
         """Get Android SDK information."""
         info = {}
-        
+
         if self.is_android_sdk_installed():
             info["status"] = "installed"
             info["android_home"] = str(self.android_home)
-            
+
             # Get SDK version if possible
             try:
                 sdkmanager_path = self.android_cmdline_tools_dir / "bin" / "sdkmanager"
@@ -420,7 +544,7 @@ class AndroidManager:
                 pass
         else:
             info["status"] = "not_installed"
-        
+
         # Java information
         if self.is_java_installed():
             info["java_status"] = "installed"
@@ -429,42 +553,26 @@ class AndroidManager:
                 info["java_version"] = java_version
         else:
             info["java_status"] = "not_installed"
-        
+
         return info
-    
+
     def setup_android_directories(self) -> bool:
         """Setup Android SDK directories with proper permissions."""
         console.print("[blue]Setting up Android SDK directories...[/blue]")
-        
+
         try:
-            # Create the directory structure
+            # Create the directory structure in user space (no sudo required)
             self.android_home.mkdir(parents=True, exist_ok=True)
             
-            # Set ownership to current user (similar to Dockerfile approach)
-            import getpass
-            current_user = getpass.getuser()
-            
-            # Change ownership to current user (may require sudo)
-            result = self.executor.run_command(
-                f"sudo chown -R {current_user}:{current_user} {self.android_home}",
-                check=False
-            )
-            
-            if result.returncode != 0:
-                console.print("[yellow]⚠ Could not change directory ownership, trying without sudo...[/yellow]")
-                # Try to create in user directory instead
-                fallback_home = Path.home() / "Android" / "Sdk" 
-                fallback_home.mkdir(parents=True, exist_ok=True)
-                # Update paths to use fallback
-                self.android_home = fallback_home
-                self.android_tools_dir = self.android_home / "tools"
-                self.android_platform_tools_dir = self.android_home / "platform-tools"
-                self.android_cmdline_tools_dir = self.android_home / "cmdline-tools" / "latest"
-                console.print(f"[blue]Using fallback directory: {self.android_home}[/blue]")
+            # Create additional required directories
+            (self.android_home / "platforms").mkdir(exist_ok=True)
+            (self.android_home / "build-tools").mkdir(exist_ok=True)
+            (self.android_home / "platform-tools").mkdir(exist_ok=True)
             
             console.print(f"[green]✓ Android SDK directory ready: {self.android_home}[/green]")
+            console.print(f"[blue]SDK will be accessible without sudo requirements[/blue]")
             return True
-            
+
         except Exception as e:
             console.print(f"[red]✗ Failed to setup Android directories: {e}[/red]")
             return False
