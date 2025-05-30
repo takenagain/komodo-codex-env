@@ -49,6 +49,7 @@ ALLOW_ROOT=false
 DEBUG=false
 FLUTTER_VERSION="3.32.0"
 PLATFORMS="web"
+INSTALL_TYPE="ALL"
 
 # Help function
 show_help() {
@@ -62,6 +63,7 @@ show_help() {
     echo "  --flutter-version VERSION    Specify Flutter version to install (default: $FLUTTER_VERSION)"
     echo "  --platforms PLATFORMS        Comma-separated list of platforms (default: $PLATFORMS)"
     echo "                              Available: web,android,linux,macos,windows,ios"
+    echo "  --install-type TYPE         Installation type: ALL, KW, KDF, or KDF-SDK (default: $INSTALL_TYPE)"
     echo "  --no-android                 Exclude Android platform (equivalent to --platforms web)"
     echo "  --allow-root                 Allow installation as root user"
     echo "  --debug                      Enable debug mode with verbose output"
@@ -146,6 +148,26 @@ while [[ $# -gt 0 ]]; do
             if [[ -z "$PLATFORMS" ]]; then
                 echo "Error: --platforms requires a comma-separated list argument"
                 echo "Example: --platforms=web,android,linux"
+                exit 1
+            fi
+            shift
+            ;;
+        --install-type)
+            if [[ -n "${2:-}" ]]; then
+                INSTALL_TYPE="${2^^}"
+                shift 2
+            else
+                echo "Error: --install-type requires an argument"
+                echo "Example: --install-type KDF"
+                exit 1
+            fi
+            ;;
+        --install-type=*)
+            INSTALL_TYPE="${1#*=}"
+            INSTALL_TYPE="${INSTALL_TYPE^^}"
+            if [[ -z "$INSTALL_TYPE" ]]; then
+                echo "Error: --install-type requires an argument"
+                echo "Example: --install-type=KDF"
                 exit 1
             fi
             shift
@@ -741,6 +763,7 @@ kce-full-setup() {
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
         --install-method precompiled \
+        --install-type "$INSTALL_TYPE" \
         --platforms "$PLATFORMS" \
         --kdf-docs \
         --verbose
@@ -752,6 +775,7 @@ kce-web-setup() {
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
         --install-method precompiled \
+        --install-type "$INSTALL_TYPE" \
         --platforms web \
         --kdf-docs \
         --verbose
@@ -763,6 +787,7 @@ kce-mobile-setup() {
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
         --install-method precompiled \
+        --install-type "$INSTALL_TYPE" \
         --platforms web,android \
         --kdf-docs \
         --verbose
@@ -774,6 +799,7 @@ kce-all-platforms-setup() {
     komodo-codex-env setup \
         --flutter-version "$flutter_version" \
         --install-method precompiled \
+        --install-type "$INSTALL_TYPE" \
         --platforms web,android,linux \
         --kdf-docs \
         --verbose
@@ -930,6 +956,7 @@ check_and_switch_user() {
                 export HOME='$user_home'
                 export USER='$user'
                 export FLUTTER_VERSION='$FLUTTER_VERSION'
+                export INSTALL_TYPE='$INSTALL_TYPE'
                 export ALLOW_ROOT='$ALLOW_ROOT'
                 export DEBUG='$DEBUG'
                 $(cat "$0")

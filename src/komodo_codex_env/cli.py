@@ -31,6 +31,12 @@ def cli():
 @cli.command()
 @click.option("--flutter-version", default="3.32.0", help="Flutter version to install")
 @click.option("--install-method", type=click.Choice(["git", "precompiled"]), default="precompiled", help="Flutter installation method")
+@click.option(
+    "--install-type",
+    type=click.Choice(["ALL", "KW", "KDF", "KDF-SDK"]),
+    default="ALL",
+    help="Installation type: ALL, KW, KDF, or KDF-SDK",
+)
 @click.option("--no-parallel", is_flag=True, help="Disable parallel execution")
 @click.option("--platforms", default="web", help="Comma-separated list of platforms to setup (e.g., web,android,linux)")
 @click.option("--no-git-fetch", is_flag=True, help="Skip fetching git branches")
@@ -40,7 +46,8 @@ def cli():
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 def setup(
     flutter_version, 
-    install_method, 
+    install_method,
+    install_type,
     no_parallel, 
     platforms, 
     no_git_fetch, 
@@ -57,6 +64,7 @@ def setup(
     # Override with command line options
     config.flutter_version = flutter_version
     config.flutter_install_method = install_method
+    config.install_type = install_type
     config.parallel_execution = not no_parallel
     config.platforms = [p.strip() for p in platforms.split(",")]
     config.fetch_all_remote_branches = not no_git_fetch
@@ -68,6 +76,7 @@ def setup(
         console.print(f"[blue]Configuration:[/blue]")
         console.print(f"  Flutter version: {config.flutter_version}")
         console.print(f"  Install method: {config.flutter_install_method}")
+        console.print(f"  Install type: {config.install_type}")
         console.print(f"  Platforms: {', '.join(config.platforms)}")
         console.print(f"  Parallel execution: {config.parallel_execution}")
         console.print(f"  Max parallel jobs: {config.max_parallel_jobs}")

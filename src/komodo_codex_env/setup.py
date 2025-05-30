@@ -15,6 +15,7 @@ from .git_manager import GitManager
 from .flutter_manager import FlutterManager
 from .android_manager import AndroidManager
 from .documentation_manager import DocumentationManager
+from .kdf_manager import KdfManager
 
 console = Console()
 
@@ -36,6 +37,7 @@ class EnvironmentSetup:
         self.flutter_manager = FlutterManager(config, self.executor, self.dep_manager)
         self.android_manager = AndroidManager(config, self.executor, self.dep_manager)
         self.doc_manager = DocumentationManager(config, self.executor)
+        self.kdf_manager = KdfManager(config, self.executor, self.dep_manager)
 
     async def run_setup(self) -> bool:
         """Run the complete environment setup."""
@@ -54,20 +56,34 @@ class EnvironmentSetup:
             await self._setup_git_operations()
 
             # Phase 3: Flutter and Android SDK installation (parallel)
-            if not await self._setup_flutter_and_android():
-                return False
+            if self.config.install_type in ("ALL", "KW"):
+                if not await self._setup_flutter_and_android():
+                    return False
+            else:
+                console.print("[blue]Skipping Flutter and Android installation[/blue]")
 
             # Phase 4: Environment configuration
-            if not await self._setup_environment():
-                return False
+            if self.config.install_type in ("ALL", "KW"):
+                if not await self._setup_environment():
+                    return False
+            else:
+                console.print("[blue]Skipping Flutter environment configuration[/blue]")
 
             # Phase 5: Documentation (parallel with project setup)
             if not await self._setup_documentation():
                 return False
 
-            # Phase 6: Project setup
-            if not await self._setup_project():
-                return False
+            # Phase 6: KDF dependencies
+            if self.config.install_type in ("ALL", "KDF", "KDF-SDK"):
+                if not await self._setup_kdf_dependencies():
+                    return False
+
+            # Phase 7: Project setup
+            if self.config.install_type in ("ALL", "KW"):
+                if not await self._setup_project():
+                    return False
+            else:
+                console.print("[blue]Skipping Flutter project setup[/blue]")
 
             self._print_completion_summary()
             return True
@@ -296,9 +312,17 @@ class EnvironmentSetup:
             console.print(f"[yellow]Documentation setup failed: {e}[/yellow]")
             return False
 
+    async def _setup_kdf_dependencies(self) -> bool:
+        """Install Komodo DeFi Framework dependencies."""
+        console.print("[bold blue]Phase 6: KDF Dependencies[/bold blue]")
+
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, self.kdf_manager.install_dependencies)
+        return success
+
     async def _setup_project(self) -> bool:
         """Set up the Flutter project."""
-        console.print("[bold blue]Phase 6: Project Setup[/bold blue]")
+        console.print("[bold blue]Phase 7: Project Setup[/bold blue]")
 
         project_path = self.config.initial_dir
 
