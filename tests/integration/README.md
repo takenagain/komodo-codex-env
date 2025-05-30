@@ -12,13 +12,14 @@ The integration tests verify the complete pipeline from environment setup to bui
 
 1. **test_flutter_only_integration.py** - Tests Flutter development without Android SDK
 2. **test_flutter_android_integration.py** - Tests Flutter development with Android SDK
+3. **test_kdf_rust_integration.py** - Tests KDF dependencies and Rust toolchain
 
 ### Unit Tests (Fast)
 
-3. **test_android_fvm_paths.py** - Tests Android SDK and FVM path detection logic
-4. **test_android_manager.py** - Tests Android manager functionality
-5. **test_setup.py** - Tests setup configuration and mocking
-6. **test_docs_location.py** - Tests documentation fetching behavior
+4. **test_android_fvm_paths.py** - Tests Android SDK and FVM path detection logic
+5. **test_android_manager.py** - Tests Android manager functionality
+6. **test_setup.py** - Tests setup configuration and mocking
+7. **test_docs_location.py** - Tests documentation fetching behavior
 
 ### Key Features
 
@@ -87,6 +88,13 @@ rye run pytest tests/integration/test_setup.py tests/integration/test_docs_locat
 - Creates a simple Flutter application with Android support
 - Builds APK for Android platform
 - Verifies APK creation and Flutter doctor Android detection
+
+### KDF Rust Integration Test
+- Runs install.sh script with `--install-type KDF`
+- Installs Komodo DeFi Framework dependencies
+- Verifies Rust toolchain installation
+- Creates a simple Cargo project
+- Builds the project to ensure compilation succeeds
 
 ### Setup Configuration Test
 - Tests parallel vs sequential setup execution
@@ -220,6 +228,7 @@ jobs:
 
 - **Flutter-only test**: ~8-12 minutes
 - **Flutter + Android test**: ~15-25 minutes
+- **KDF Rust test**: ~5-10 minutes
 - **Unit tests**: ~30 seconds
 - **Total runtime**: ~10-15 minutes (sequential), ~8-10 minutes (parallel)
 
