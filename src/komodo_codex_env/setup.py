@@ -56,7 +56,7 @@ class EnvironmentSetup:
             await self._setup_git_operations()
 
             # Phase 3: Flutter and Android SDK installation (parallel)
-            if self.config.install_type in ("ALL", "KW"):
+            if self.config.install_type in ("ALL", "KW", "KDF-SDK"):
                 if not await self._setup_flutter_and_android():
                     return False
             else:
