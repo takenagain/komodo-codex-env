@@ -1,174 +1,119 @@
 # Scripts Directory
 
-This directory contains standalone scripts and utilities for Android SDK installation and testing.
+This directory contains utilities for development environment setup, testing, and verification.
 
 ## Scripts Overview
 
-### Android SDK Installation
+### Available Scripts
 
-- **`install_android_sdk.py`** - Standalone Python script for Android SDK installation
-- **`install_android_sdk.sh`** - Shell wrapper script with user-friendly interface
+- **`run_tests.py`** - Test runner helper script for development
+- **`setup_dev_env.sh`** - Development environment setup using Rye
+- **`verify_fvm.py`** - FVM installation verification script
 
-### Testing Scripts
 
-- **`test_android_install.py`** - Unit tests for Android SDK functionality
-- **`test_integration.py`** - Integration tests for parallel Flutter and Android setup
 
 ## Usage
 
-### Standalone Android SDK Installation
+### Development Environment Setup
 
 ```bash
-# Basic installation using Python script
-./scripts/install_android_sdk.py
+# Set up Python development environment using Rye
+./scripts/setup_dev_env.sh
 
-# Using shell wrapper (recommended)
-./scripts/install_android_sdk.sh
-
-# With options
-./scripts/install_android_sdk.sh --skip-java --android-home /custom/path
-
-# Show help
-./scripts/install_android_sdk.sh --help
+# This will:
+# - Install/update dependencies with Rye
+# - Check system dependencies
+# - Set up the development environment
 ```
 
 ### Running Tests
 
 ```bash
-# Run Android SDK unit tests
-cd scripts && python test_android_install.py
+# Run tests using the test runner
+python scripts/run_tests.py unit
 
-# Run integration tests
-cd scripts && python test_integration.py
+# Run with verbose output
+python scripts/run_tests.py unit --verbose
 
-# Run both from project root
-python scripts/test_android_install.py
-python scripts/test_integration.py
+# Run all tests
+python scripts/run_tests.py all
 ```
 
 ## Script Details
 
-### install_android_sdk.py
+### run_tests.py
 
-Standalone Android SDK installer that can run independently of the main tool:
+Test runner helper script providing convenient commands for running different types of tests:
 
-- Detects and installs Java JDK if needed
-- Downloads Android SDK command-line tools
-- Installs essential packages (platform-tools, build-tools, API levels)
-- Configures environment variables
-- Cross-platform support (Linux, macOS, Windows)
+- Unit test execution with optional parallelization
+- Integration test execution with Docker
+- Coverage reporting and analysis
+- Linting and syntax checking
+- Specific test file execution
 
-**Environment Variables:**
-- `ANDROID_HOME` - Custom Android SDK directory
-- `SKIP_JAVA_INSTALL` - Skip Java installation
+### verify_fvm.py
 
-### install_android_sdk.sh
+FVM (Flutter Version Management) installation verification script:
 
-User-friendly shell wrapper for the Python installer:
-
-- Command-line argument parsing
-- Disk space checking
-- Python version detection
-- Colored output and progress feedback
-
-**Options:**
-- `--skip-java` - Skip Java installation
-- `--android-home DIR` - Set custom Android SDK directory
-- `--help` - Show usage information
-
-### test_android_install.py
-
-Comprehensive unit tests for Android SDK functionality:
-
-- Android SDK detection and verification
-- Java version parsing
-- Environment variable setup
-- URL generation for different platforms
-- Directory structure validation
-
-### test_integration.py
-
-Integration tests for parallel execution and workflow validation:
-
-- Parallel vs sequential execution modes
-- Platform filtering logic
-- Configuration flag handling
-- Error propagation and failure handling
-- Mock-based testing for complex workflows
+- Checks FVM availability for multiple users
+- Verifies PATH configuration in shell profiles
+- Lists installed Flutter versions via FVM
+- Validates FVM command functionality
+- Cross-platform verification support
 
 ## Requirements
 
-### For Android SDK Installation Scripts
+### For Development Scripts
 
 - Python 3.11+
-- Internet connectivity
-- 5GB+ available disk space
-- curl (for downloads)
-
-### For Testing Scripts
-
-- Python 3.11+
+- Rye package manager (for setup_dev_env.sh)
 - Access to komodo_codex_env source code
-- unittest.mock for mocking
+- pytest for testing (installed via Rye)
 
 ## Examples
 
-### Quick Android SDK Setup
+### Development Workflow
 
 ```bash
-# Navigate to scripts directory
-cd scripts
+# Set up development environment
+./scripts/setup_dev_env.sh
 
-# Run installation
-./install_android_sdk.sh
+# Run unit tests
+python scripts/run_tests.py unit
 
-# Verify installation
-flutter doctor
+# Run integration tests
+python scripts/run_tests.py integration
+
+# Generate test coverage report
+python scripts/run_tests.py coverage
+
+# Verify FVM installation
+python scripts/verify_fvm.py
 ```
+</edits>
 
-### Development Testing
 
-```bash
-# Test Android SDK functionality
-python scripts/test_android_install.py
-
-# Test integration with main tool
-python scripts/test_integration.py
-
-# Run both tests
-for test in scripts/test_*.py; do python "$test"; done
-```
-
-### Custom Installation
-
-```bash
-# Install to custom location
-./scripts/install_android_sdk.sh --android-home /opt/android-sdk
-
-# Skip Java if already installed
-./scripts/install_android_sdk.sh --skip-java
-
-# Environment variable approach
-ANDROID_HOME=/custom/path ./scripts/install_android_sdk.py
-```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Permission errors**: Ensure write access to target directory
-2. **Python not found**: Install Python 3.11+ or use full path
-3. **Network issues**: Check internet connectivity and firewall
-4. **Disk space**: Ensure 5GB+ available space
+1. **Python not found**: Install Python 3.11+ or use full path
+2. **Rye not installed**: Install Rye package manager for setup_dev_env.sh
+3. **FVM not found**: Run verify_fvm.py to check installation status
+4. **Test failures**: Use run_tests.py with verbose output for debugging
 
 ### Debug Mode
 
 ```bash
-# Run with verbose output
-./scripts/install_android_sdk.py --verbose
+# Run tests with verbose output
+python scripts/run_tests.py unit --verbose
 
-# Check test output
-python scripts/test_android_install.py -v
+# Verify FVM installation
+python scripts/verify_fvm.py
+
+# Set up development environment
+./scripts/setup_dev_env.sh
 ```
 
-For detailed troubleshooting, see `docs/android/ANDROID_SDK_GUIDE.md`.
+For main tool troubleshooting, see the primary documentation in `docs/`.

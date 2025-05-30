@@ -56,10 +56,9 @@ komodo-codex-env/
 │   ├── cli.py                      # Command-line interface
 │   └── ...                         # Other core modules
 ├── scripts/                        # Standalone scripts and utilities
-│   ├── install_android_sdk.py      # Standalone Android SDK installer
-│   ├── install_android_sdk.sh      # Shell wrapper for installer
-│   ├── test_android_install.py     # Unit tests for Android SDK
-│   ├── test_integration.py         # Integration tests
+│   ├── run_tests.py                # Test runner helper script
+│   ├── setup_dev_env.sh            # Development environment setup
+│   ├── verify_fvm.py               # FVM verification script
 │   └── README.md                   # Scripts documentation
 ├── docs/                           # Documentation
 │   ├── android/                    # Android-specific documentation
@@ -155,10 +154,9 @@ export MAX_PARALLEL_JOBS=4
 
 ### Scripts Directory
 
-- `scripts/install_android_sdk.py` - Standalone Android SDK installer
-- `scripts/install_android_sdk.sh` - Shell wrapper for Android SDK installer
-- `scripts/test_android_install.py` - Unit tests for Android SDK functionality
-- `scripts/test_integration.py` - Integration tests for parallel setup
+- `scripts/run_tests.py` - Test runner helper script for development
+- `scripts/setup_dev_env.sh` - Development environment setup using Rye
+- `scripts/verify_fvm.py` - FVM installation verification script
 
 ### Documentation
 
@@ -246,19 +244,34 @@ fvm flutter pub get
 
 The tool includes automated Android SDK installation for APK building:
 
-### Standalone Android SDK Installation
+### CLI-Based Android SDK Installation
 
-You can install just the Android SDK without the full Flutter setup:
+Android SDK installation is handled through the main CLI tool:
 
 ```bash
-# Using the Python script directly
-./scripts/install_android_sdk.py
+# Install Android SDK only
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
 
-# Using the shell wrapper script
-./scripts/install_android_sdk.sh
+# Check Android SDK status
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
 
-# With custom options
-./scripts/install_android_sdk.sh --skip-java --android-home /custom/path
+# Accept Android licenses
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+```
+
+### Development Scripts
+
+The scripts directory provides utilities for development and verification:
+
+```bash
+# Run development tests
+python scripts/run_tests.py unit
+
+# Set up development environment
+./scripts/setup_dev_env.sh
+
+# Verify FVM installation
+python scripts/verify_fvm.py
 ```
 
 ### Android SDK Features

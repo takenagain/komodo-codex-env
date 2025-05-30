@@ -13,7 +13,6 @@ from .documentation_manager import DocumentationManager
 from .executor import CommandExecutor
 from .dependency_manager import DependencyManager
 from .flutter_manager import FlutterManager
-from .android_manager import AndroidManager
 
 console = Console()
 
@@ -37,7 +36,6 @@ def cli():
 @click.option("--no-git-fetch", is_flag=True, help="Skip fetching git branches")
 @click.option("--no-docs", is_flag=True, help="Skip documentation fetching")
 @click.option("--kdf-docs", is_flag=True, help="Fetch KDF API documentation")
-@click.option("--no-android", is_flag=True, help="Skip Android SDK installation")
 @click.option("--max-time", default=300, help="Maximum execution time in seconds")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 def setup(
@@ -48,7 +46,6 @@ def setup(
     no_git_fetch, 
     no_docs, 
     kdf_docs, 
-    no_android,
     max_time,
     verbose
 ):
@@ -65,7 +62,6 @@ def setup(
     config.fetch_all_remote_branches = not no_git_fetch
     config.should_fetch_agents_docs = not no_docs
     config.should_fetch_kdf_api_docs = kdf_docs
-    config.install_android_sdk = not no_android
     config.max_execution_time = max_time
     
     if verbose:
@@ -77,7 +73,6 @@ def setup(
         console.print(f"  Max parallel jobs: {config.max_parallel_jobs}")
         console.print(f"  Fetch git branches: {config.fetch_all_remote_branches}")
         console.print(f"  Fetch documentation: {config.should_fetch_agents_docs}")
-        console.print(f"  Install Android SDK: {config.install_android_sdk}")
         console.print("")
     
     # Run setup
@@ -183,7 +178,7 @@ def check_deps():
 
 @cli.command()
 @click.option("--version", help="Flutter version to check/install")
-def flutter_status(version):
+def flutter_status():
     """Check Flutter installation status via FVM."""
     
     config = EnvironmentConfig.from_environment()
@@ -363,107 +358,6 @@ def fvm_releases():
             console.print("[red]Failed to fetch Flutter releases[/red]")
     except Exception as e:
         console.print(f"[red]Failed to fetch releases: {e}[/red]")
-
-
-@cli.command()
-def android_status():
-    """Check Android SDK installation status."""
-    
-    config = EnvironmentConfig.from_environment()
-    executor = CommandExecutor()
-    dep_manager = DependencyManager(executor)
-    android_manager = AndroidManager(config, executor, dep_manager)
-    
-    console.print("[blue]Android SDK Installation Status[/blue]")
-    
-    # Get Android SDK info
-    android_info = android_manager.get_android_info()
-    
-    # Check Java
-    java_status = android_info.get("java_status", "not_installed")
-    if java_status == "installed":
-        java_version = android_info.get("java_version", "Unknown")
-        console.print(f"[green]✓ Java installed: {java_version}[/green]")
-    else:
-        console.print("[red]✗ Java not installed[/red]")
-    
-    # Check Android SDK
-    sdk_status = android_info.get("status", "not_installed")
-    if sdk_status == "installed":
-        android_home = android_info.get("android_home", "Unknown")
-        console.print(f"[green]✓ Android SDK installed: {android_home}[/green]")
-        
-        sdk_version = android_info.get("sdk_version")
-        if sdk_version:
-            console.print(f"  SDK Version: {sdk_version}")
-    else:
-        console.print("[red]✗ Android SDK not installed[/red]")
-    
-    # Check Flutter doctor for Android
-    console.print("\nChecking Flutter doctor for Android...")
-    try:
-        result = executor.run_command("flutter doctor", check=False)
-        if result.returncode == 0:
-            console.print("[green]✓ Flutter doctor passed[/green]")
-        else:
-            console.print("[yellow]⚠ Flutter doctor has warnings[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Flutter doctor failed: {e}[/red]")
-
-
-@cli.command()
-def android_install():
-    """Install Android SDK for Flutter development."""
-    
-    config = EnvironmentConfig.from_environment()
-    executor = CommandExecutor()
-    dep_manager = DependencyManager(executor)
-    android_manager = AndroidManager(config, executor, dep_manager)
-    
-    console.print("[blue]Installing Android SDK...[/blue]")
-    
-    try:
-        success = android_manager.install_android_sdk()
-        if success:
-            console.print("[green]Android SDK installation completed successfully![/green]")
-            console.print("")
-            console.print("Next steps:")
-            console.print("1. Restart your terminal or run: source ~/.zshrc (or ~/.bashrc)")
-            console.print("2. Run: flutter doctor --android-licenses")
-            console.print("3. Run: flutter doctor")
-            console.print("4. Connect device or start emulator: flutter devices")
-        else:
-            console.print("[red]Android SDK installation failed[/red]")
-            sys.exit(1)
-    except Exception as e:
-        console.print(f"[red]Android SDK installation failed: {e}[/red]")
-        sys.exit(1)
-
-
-@cli.command()
-def android_licenses():
-    """Accept Android SDK licenses."""
-    
-    config = EnvironmentConfig.from_environment()
-    executor = CommandExecutor()
-    dep_manager = DependencyManager(executor)
-    android_manager = AndroidManager(config, executor, dep_manager)
-    
-    if not android_manager.is_android_sdk_installed():
-        console.print("[red]Android SDK is not installed[/red]")
-        console.print("Run 'android-install' command first.")
-        return
-    
-    console.print("[blue]Accepting Android SDK licenses...[/blue]")
-    
-    try:
-        result = executor.run_command("flutter doctor --android-licenses", check=False)
-        if result.returncode == 0:
-            console.print("[green]✓ Android licenses accepted[/green]")
-        else:
-            console.print("[yellow]⚠ License acceptance had issues[/yellow]")
-    except Exception as e:
-        console.print(f"[red]License acceptance failed: {e}[/red]")
 
 
 def main():

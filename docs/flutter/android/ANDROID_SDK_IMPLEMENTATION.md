@@ -15,19 +15,7 @@ This document summarizes the implementation of Android SDK installation and mana
    - Configures environment variables (ANDROID_HOME, PATH)
    - Cross-platform support (Linux, macOS, Windows)
 
-2. **`install_android_sdk.py`** - Standalone Python installation script
-   - Independent Android SDK installer that can run without the main tool
-   - Colored console output with status messages
-   - Comprehensive error handling and user feedback
-   - Platform detection and appropriate package management
-
-3. **`install_android_sdk.sh`** - Shell wrapper script
-   - Convenient shell interface for the Python installer
-   - Command-line argument parsing (--skip-java, --android-home, --help)
-   - Environment variable support
-   - Disk space checking and user guidance
-
-4. **Enhanced CLI commands** - Extended command-line interface
+2. **Enhanced CLI commands** - Extended command-line interface
    - `android-status` - Check Android SDK installation status
    - `android-install` - Install Android SDK independently
    - `android-licenses` - Accept Android SDK licenses
@@ -123,11 +111,8 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
 
 ### Standalone Installation
 ```bash
-# Using Python script directly
-./install_android_sdk.py
-
-# Using shell wrapper with options
-./install_android_sdk.sh --skip-java --android-home /custom/path
+# Using the CLI
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
 ```
 
 ### Status and Management
@@ -166,25 +151,29 @@ Centralized environment configuration through `DependencyManager`:
 ### 4. Modular Architecture
 Each component has clear responsibilities:
 - `AndroidManager`: Core functionality and business logic
-- `install_android_sdk.py`: Standalone installation capability
-- `install_android_sdk.sh`: User-friendly shell interface
 - CLI integration: Commands and workflow orchestration
+- `scripts/run_tests.py`: Development testing support
+- `scripts/verify_fvm.py`: FVM installation verification
 
 ## Testing and Validation
 
-### Unit Tests (`test_android_install.py`)
-- Android SDK detection and verification
-- Java version parsing and detection
-- Environment variable setup
-- URL generation for different platforms
-- Directory structure validation
+The Android SDK functionality is tested through the main test suite located in the `tests/` directory:
 
-### Integration Tests (`test_integration.py`)
-- Parallel vs sequential execution modes
-- Platform filtering (skip when android not in platforms)
-- Configuration flag handling (skip when disabled)
-- Error propagation and failure handling
-- Mock-based testing for complex workflows
+- **Unit Tests** - Located in `tests/unit/`
+  - Android SDK detection and verification
+  - Java version parsing and detection
+  - Environment variable setup
+  - Cross-platform functionality testing
+
+- **Integration Tests** - Located in `tests/integration/`
+  - Full Android SDK installation workflow
+  - Flutter and Android integration testing
+  - Platform-specific installation validation
+
+- **Development Testing** - Using `scripts/run_tests.py`
+  - Convenient test runner for development
+  - Coverage reporting and analysis
+  - Linting and syntax checking
 
 ### Manual Testing
 - Cross-platform compatibility verification
@@ -202,12 +191,16 @@ komodo-codex-env/
 │   ├── setup.py                     # Parallel execution integration
 │   ├── cli.py                       # Android commands added
 │   └── dependency_manager.py        # Environment variable support
-├── install_android_sdk.py           # Standalone Python installer
-├── install_android_sdk.sh           # Shell wrapper script
-├── test_android_install.py          # Unit tests
-├── test_integration.py              # Integration tests
-├── ANDROID_SDK_GUIDE.md            # User documentation
-└── ANDROID_SDK_IMPLEMENTATION.md   # This document
+├── scripts/
+│   ├── run_tests.py                 # Test runner helper
+│   ├── setup_dev_env.sh             # Development environment setup
+│   └── verify_fvm.py                # FVM verification
+├── tests/                           # Unit and integration tests
+└── docs/
+    └── android/
+        ├── ANDROID_SDK_GUIDE.md     # User guide
+        └── ANDROID_SDK_IMPLEMENTATION.md  # This file
+</edits>
 ```
 
 ## Performance Metrics
@@ -299,7 +292,7 @@ The Android SDK implementation successfully achieves:
 
 ✅ **Parallel Execution**: Flutter and Android SDK install simultaneously  
 ✅ **Cross-Platform Support**: Linux, macOS, and Windows compatibility  
-✅ **Standalone Capability**: Independent Android SDK installation  
+✅ **CLI Integration**: Android SDK management via CLI commands  
 ✅ **Integration Quality**: Seamless integration with existing codebase  
 ✅ **Error Handling**: Comprehensive error reporting and recovery  
 ✅ **User Experience**: Clear feedback and troubleshooting guidance  

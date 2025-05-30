@@ -27,20 +27,14 @@ komodo-codex-env/
 │   └── documentation_manager.py        # Documentation fetching
 ├── scripts/                            # Standalone scripts and utilities
 │   ├── README.md                       # Scripts documentation
-│   ├── install_android_sdk.py          # Standalone Android SDK installer
-│   ├── install_android_sdk.sh          # Shell wrapper for installer
-│   ├── test_android_install.py         # Android SDK unit tests
-│   └── test_integration.py             # Integration tests
-│   └── run_setup.sh                    # Setup execution script
+│   ├── run_tests.py                    # Test runner helper script
+│   ├── setup_dev_env.sh                # Python development setup script
+│   └── verify_fvm.py                   # FVM verification script
 ├── docs/                               # Documentation
 │   ├── README.md                       # Documentation index
 │   ├── android/                        # Android-specific documentation
 │   │   ├── ANDROID_SDK_GUIDE.md        # User guide for Android SDK
 │   │   └── ANDROID_SDK_IMPLEMENTATION.md # Technical implementation details
-│   ├── bloc_concepts.md                # Flutter BLoC concepts
-│   ├── bloc_conventions.md             # BLoC coding conventions
-│   ├── bloc_modeling.md                # BLoC modeling guidelines
-│   ├── bloc_testing.md                 # BLoC testing strategies
 │   └── commit_conventions.md           # Git commit conventions
 ├── .venv/                              # Python virtual environment
 ├── .git/                               # Git repository data
@@ -79,45 +73,21 @@ komodo-codex-env/
 
 ### Android SDK Installation
 
-- **`install_android_sdk.py`** - Complete standalone Android SDK installer
-  - Independent of main tool
-  - Cross-platform support (Linux, macOS, Windows)
-  - Automatic Java JDK installation
-  - SDK package management
-  - Environment configuration
+### Development and Testing Scripts
 
-- **`install_android_sdk.sh`** - User-friendly shell wrapper
-  - Command-line argument parsing
-  - Environment variable support
-  - Disk space checking
-  - Python version detection
+- **`run_tests.py`** - Test runner helper script
+  - Unit test execution with optional parallelization
+  - Integration test execution with Docker
+  - Coverage reporting and analysis
+  - Linting and syntax checking
+  - Specific test file execution
 
-### Testing Scripts
-
-- **`test_android_install.py`** - Comprehensive unit tests
-  - Android SDK detection and verification
-  - Java version parsing
-  - Environment variable setup
-  - Cross-platform URL generation
-  - Directory structure validation
-
-- **`test_integration.py`** - Integration tests
-  - Parallel execution validation
-  - Sequential fallback testing
-  - Platform filtering logic
-  - Error handling and propagation
-  - Configuration management
-
-- **`test-install.sh`** - Docker-based install script testing
-  - Clean environment testing
-  - Root and non-root user scenarios
-  - Multi-platform container support
-  - Automated verification and cleanup
-
-- **`test/test_docker_install.py`** - Python unit tests for Docker installation
-  - Containerized installation testing
-  - UV entry point verification
-  - Cross-platform installation validation
+- **`verify_fvm.py`** - FVM installation verification
+  - Checks FVM availability for multiple users
+  - Verifies PATH configuration in shell profiles
+  - Lists installed Flutter versions via FVM
+  - Validates FVM command functionality
+  - Cross-platform verification support
   - Automated Docker container management
 
 ## Documentation (docs/)
@@ -153,8 +123,8 @@ komodo-codex-env/
 ### Primary Workflows
 
 1. **Full Environment Setup**: `PYTHONPATH=src uv run python -m komodo_codex_env.cli setup`
-2. **Android-Only Installation**: `./scripts/install_android_sdk.sh`
-3. **Development Testing**: `python scripts/test_android_install.py`
+2. **Development Environment**: `./scripts/setup_dev_env.sh`
+3. **Development Testing**: `python scripts/run_tests.py unit`
 
 ### Configuration Files
 

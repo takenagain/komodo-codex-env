@@ -76,3 +76,27 @@ dev-dependencies = [
     "pytest>=8.3.5",
     "pytest-xdist>=3.7.0",
 ]
+
+[tool.rye.scripts]
+# Development setup
+setup = "python -m komodo_codex_env.cli check-deps"
+check-deps = "python -m komodo_codex_env.cli check-deps"
+
+# Testing
+test = "pytest"
+test-v = "pytest -v"
+test-cov = "pytest --cov=src/komodo_codex_env --cov-report=html --cov-report=term"
+test-quick = "pytest -x"
+
+# Code quality
+lint = "ruff check src/"
+format = "ruff format src/"
+format-check = "ruff format --check src/"
+
+# CLI commands
+cli = "python -m komodo_codex_env.cli"
+docs = "python -m komodo_codex_env.cli fetch-docs"
+status = "python -m komodo_codex_env.cli flutter-status"
+
+# Utilities
+clean = { shell = "find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true" }

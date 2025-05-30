@@ -29,12 +29,6 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,andro
 ```bash
 # Using the CLI
 PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
-
-# Using standalone Python script
-./install_android_sdk.py
-
-# Using shell wrapper
-./install_android_sdk.sh
 ```
 
 ### Option 3: Skip Android SDK
@@ -124,20 +118,17 @@ PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
 PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
 ```
 
-### Standalone Script Options
+### CLI Command Options
 
 ```bash
-# Basic installation
-./install_android_sdk.sh
+# Using the main CLI tool
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
 
-# Skip Java installation (if already installed)
-./install_android_sdk.sh --skip-java
+# Check Android SDK status
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
 
-# Custom Android SDK location
-./install_android_sdk.sh --android-home /custom/path/to/android/sdk
-
-# Show help
-./install_android_sdk.sh --help
+# Accept Android licenses
+PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
 ```
 
 ## Environment Variables
@@ -151,7 +142,7 @@ export INSTALL_ANDROID_SDK=false
 # Custom Android SDK directory
 export ANDROID_HOME=/custom/path/to/android/sdk
 
-# Skip Java installation in standalone script
+# Skip Java installation
 export SKIP_JAVA_INSTALL=true
 ```
 
