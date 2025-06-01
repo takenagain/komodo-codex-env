@@ -35,21 +35,16 @@ komodo-codex-env/
 │   ├── android/                        # Android-specific documentation
 │   │   ├── ANDROID_SDK_GUIDE.md        # User guide for Android SDK
 │   │   └── ANDROID_SDK_IMPLEMENTATION.md # Technical implementation details
-│   └── commit_conventions.md           # Git commit conventions
 ├── .venv/                              # Python virtual environment
 ├── .git/                               # Git repository data
 ├── .gitignore                          # Git ignore rules
 ├── .python-version                     # Python version specification
-├── .ropeproject/                       # Rope IDE configuration
-├── AGENTS.md                           # Agent documentation
-├── KDF_API_DOCUMENTATION.md           # KDF API documentation
 ├── PROJECT_STRUCTURE.md               # This file
 ├── README.md                           # Main project README
 ├── install.sh                          # Main installation script
 ├── pyproject.toml                      # Python project configuration
-├── requirements-dev.txt                # Development dependencies
-├── requirements.txt                    # Runtime dependencies
-└── uv.lock                            # UV package lock file
+├── requirements-dev.lock               # Locked development dependencies
+├── requirements.lock                   # Locked runtime dependencies
 ```
 
 ## Core Components (src/komodo_codex_env/)
@@ -116,27 +111,26 @@ komodo-codex-env/
 - **`bloc_conventions.md`** - Coding conventions for BLoC pattern
 - **`bloc_modeling.md`** - Data modeling guidelines
 - **`bloc_testing.md`** - Testing strategies for BLoC components
-- **`commit_conventions.md`** - Git commit message standards
 
 ## Usage Patterns
 
 ### Primary Workflows
 
-1. **Full Environment Setup**: `PYTHONPATH=src uv run python -m komodo_codex_env.cli setup`
+1. **Full Environment Setup**: `PYTHONPATH=src rye run python -m komodo_codex_env.cli setup`
 2. **Development Environment**: `./scripts/setup_dev_env.sh`
 3. **Development Testing**: `python scripts/run_tests.py unit`
 
 ### Configuration Files
 
 - **`pyproject.toml`** - Python project metadata and dependencies
-- **`uv.lock`** - Locked dependency versions for reproducible builds
+- **`requirements.lock`** - Locked runtime dependencies
 - **`.python-version`** - Python version specification for version managers
 
 ### Environment Management
 
 - **`.venv/`** - Isolated Python environment for development
-- **`requirements.txt`** - Runtime dependencies
-- **`requirements-dev.txt`** - Development and testing dependencies
+- **`requirements.lock`** - Locked runtime dependencies
+- **`requirements-dev.lock`** - Locked development dependencies
 
 ## Key Features by Location
 

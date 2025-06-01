@@ -18,24 +18,24 @@ The Android SDK installation is integrated as a parallel setup step alongside th
 
 ```bash
 # Install Flutter + Android SDK in parallel
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android
 
 # Or with verbose output
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android --verbose
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android --verbose
 ```
 
 ### Option 2: Android SDK Only
 
 ```bash
 # Using the CLI
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 ```
 
 ### Option 3: Skip Android SDK
 
 ```bash
 # Skip Android SDK installation
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --no-android
 ```
 
 ## Installation Components
@@ -102,33 +102,33 @@ After installation, your Android SDK will be organized as:
 
 ```bash
 # Check Android SDK installation status
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-status
 
 # Check overall Flutter environment
-PYTHONPATH=src uv run python -m komodo_codex_env.cli flutter-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli flutter-status
 ```
 
 ### Installation Commands
 
 ```bash
 # Install Android SDK
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 
 # Accept Android licenses
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-licenses
 ```
 
 ### CLI Command Options
 
 ```bash
 # Using the main CLI tool
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 
 # Check Android SDK status
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-status
 
 # Accept Android licenses
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-licenses
 ```
 
 ## Environment Variables
@@ -215,7 +215,7 @@ When using the main setup command with `android` in platforms, the tool runs Flu
 
 ```bash
 # This runs Flutter FVM setup and Android SDK installation simultaneously
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android
 ```
 
 **Benefits:**
@@ -281,7 +281,7 @@ Manual Java installation required. Download from:
 
 ```bash
 # Run with verbose output for debugging
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms android --verbose
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms android --verbose
 
 # Check detailed Flutter doctor output
 flutter doctor -v
@@ -309,7 +309,7 @@ ls ~/Android/Sdk/platforms/
 # GitHub Actions example
 - name: Setup Flutter with Android SDK
   run: |
-    PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android --no-docs
+    PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android --no-docs
     
 - name: Build APK
   run: |
@@ -333,7 +333,7 @@ RUN PYTHONPATH=src python -m komodo_codex_env.cli setup --platforms android --no
 export ANDROID_HOME="/opt/android-sdk"
 export PLATFORMS="web,android,linux"
 
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup \
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup \
   --platforms $PLATFORMS \
   --flutter-version 3.32.0 \
   --verbose
