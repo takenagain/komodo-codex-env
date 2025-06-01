@@ -38,7 +38,7 @@ class KdfManager:
                     check=False,
                     timeout=600,
                 )
-                self.executor.run_command("bash -c 'source $HOME/.cargo/env'", check=False)
+                self._update_shell_configs()
             except Exception as e:
                 console.print(f"[red]Failed to install Rust: {e}[/red]")
                 return False
@@ -57,3 +57,63 @@ class KdfManager:
 
         console.print("[green]✓ KDF dependencies installed successfully[/green]")
         return True
+
+    def _update_shell_configs(self) -> None:
+        """Update shell configuration files to include Cargo environment."""
+        home = Path.home()
+        cargo_env_line = "source $HOME/.cargo/env"
+        
+        # List of shell config files to update
+        shell_configs = [
+            home / ".bashrc",
+            home / ".zshrc", 
+            home / ".profile",
+            home / ".bash_profile"
+        ]
+        
+        # Also check for fish shell config
+        fish_config = home / ".config" / "fish" / "config.fish"
+        fish_env_line = "source $HOME/.cargo/env.fish"
+        
+        for config_file in shell_configs:
+            if config_file.exists():
+                try:
+                    # Check if the line already exists
+                    content = config_file.read_text()
+                    if cargo_env_line not in content:
+                        self.executor.run_command(
+                            f"echo '{cargo_env_line}' >> {config_file}",
+                            check=False
+                        )
+                        console.print(f"[green]Updated {config_file.name}[/green]")
+                    else:
+                        console.print(f"[yellow]{config_file.name} already configured[/yellow]")
+                except Exception as e:
+                    console.print(f"[yellow]Could not update {config_file.name}: {e}[/yellow]")
+        
+        # Handle fish shell separately
+        if fish_config.exists():
+            try:
+                content = fish_config.read_text()
+                if fish_env_line not in content:
+                    self.executor.run_command(
+                        f"echo '{fish_env_line}' >> {fish_config}",
+                        check=False
+                    )
+                    console.print(f"[green]Updated fish config[/green]")
+                else:
+                    console.print(f"[yellow]Fish config already configured[/yellow]")
+            except Exception as e:
+                console.print(f"[yellow]Could not update fish config: {e}[/yellow]")
+        
+        # Create fish env file if fish config exists but env file doesn't
+        fish_env_file = home / ".cargo" / "env.fish"
+        if fish_config.exists() and not fish_env_file.exists():
+            try:
+                self.executor.run_command(
+                    f"test -f {home}/.cargo/env && "
+                    f"sed 's/export /set -gx /g; s/=/ /g' {home}/.cargo/env > {fish_env_file}",
+                    check=False
+                )
+            except Exception as e:
+                console.print(f"[yellow]Could not create fish env file: {e}[/yellow]")
