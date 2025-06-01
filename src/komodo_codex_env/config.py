@@ -41,6 +41,9 @@ class EnvironmentConfig:
     should_fetch_agents_docs: bool = True
     should_fetch_kdf_api_docs: bool = False
 
+    # Installation type
+    install_type: str = "ALL"  # ALL, KW, KDF, or KDF-SDK
+
     # URLs
     gist_base_url: str = "https://gist.githubusercontent.com/CharlVS/14233fff7e9b3d66a7268d578cc34b36/raw"
     kdf_api_docs_url: str = "https://raw.githubusercontent.com/KomodoPlatform/komodo-docs-mdx/refs/heads/dev/data-for-gpts/komodefi-api/all-api-content.txt"
@@ -112,6 +115,7 @@ class EnvironmentConfig:
         config.should_fetch_agents_docs = os.getenv("SHOULD_FETCH_AGENTS_DOCS", "true").lower() == "true"
         config.should_fetch_kdf_api_docs = os.getenv("SHOULD_FETCH_KDF_API_DOCS", "false").lower() == "true"
         config.install_android_sdk = os.getenv("INSTALL_ANDROID_SDK", "true").lower() == "true"
+        config.install_type = os.getenv("INSTALL_TYPE", "ALL").upper()
         
         # Android configuration overrides
         android_api_level = os.getenv("ANDROID_API_LEVEL")
