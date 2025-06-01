@@ -63,8 +63,6 @@ The implementation documentation covers:
 
 - Main project README: [`../README.md`](../README.md)
 - Scripts documentation: [`../scripts/README.md`](../scripts/README.md)
-- Agent documentation: [`../AGENTS.md`](../AGENTS.md)
-- KDF API documentation: [`../KDF_API_DOCUMENTATION.md`](../KDF_API_DOCUMENTATION.md)
 
 ## Contributing
 

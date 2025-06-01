@@ -19,7 +19,7 @@ A Python-based replacement for the original bash script to set up Flutter develo
 ### Prerequisites
 
 - Python 3.11+ (Python 3.13 recommended)
-- `uv` package manager
+- [Rye](https://rye.astral.sh/) package manager
 - Git
 - FVM (Flutter Version Management) - installed automatically
 - Java 17+ (OpenJDK) - installed automatically for Android development
@@ -29,6 +29,12 @@ A Python-based replacement for the original bash script to set up Flutter develo
 ```bash
 # Quick install with all dependencies and FVM setup
 curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh | bash
+
+# Example with custom options
+curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh | bash -s -- \
+  --flutter-version 3.32.0 \
+  --platforms web,android \
+  --install-type ALL
 ```
 
 ### Manual Installation
@@ -39,10 +45,10 @@ git clone <repository-url>
 cd komodo-codex-env
 
 # Install dependencies
-uv sync --dev
+rye sync
 
 # Run the setup with FVM
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --verbose
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --verbose
 ```
 
 ## Project Structure
@@ -75,46 +81,46 @@ komodo-codex-env/
 
 ```bash
 # Full environment setup with FVM
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup
 
 # Setup with custom Flutter version
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --flutter-version 3.29.3
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --flutter-version 3.29.3
 
 # Setup with specific platforms (Android SDK auto-installed if android is included)
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android,linux
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android,linux
 
 # Skip Android SDK installation
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --no-android
 
 # Verbose output
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --verbose
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --verbose
 ```
 
 ### Individual Commands
 
 ```bash
 # Check system dependencies
-PYTHONPATH=src uv run python -m komodo_codex_env.cli check-deps
+PYTHONPATH=src rye run python -m komodo_codex_env.cli check-deps
 
 # Check Flutter status via FVM
-PYTHONPATH=src uv run python -m komodo_codex_env.cli flutter-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli flutter-status
 
 # Fetch documentation only
-PYTHONPATH=src uv run python -m komodo_codex_env.cli fetch-docs
+PYTHONPATH=src rye run python -m komodo_codex_env.cli fetch-docs
 
 # FVM Flutter management
-PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-list
-PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-install 3.29.3
-PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-use 3.29.3
-PYTHONPATH=src uv run python -m komodo_codex_env.cli fvm-releases
+PYTHONPATH=src rye run python -m komodo_codex_env.cli fvm-list
+PYTHONPATH=src rye run python -m komodo_codex_env.cli fvm-install 3.29.3
+PYTHONPATH=src rye run python -m komodo_codex_env.cli fvm-use 3.29.3
+PYTHONPATH=src rye run python -m komodo_codex_env.cli fvm-releases
 
 # Android SDK management
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-licenses
 
 # Update script from remote
-PYTHONPATH=src uv run python -m komodo_codex_env.cli update-script
+PYTHONPATH=src rye run python -m komodo_codex_env.cli update-script
 ```
 
 ## Configuration
@@ -180,19 +186,19 @@ export MAX_PARALLEL_JOBS=4
 
 ```bash
 # Install development dependencies
-uv sync --dev
+rye sync
 
 # Run tests
-uv run pytest
+rye run pytest
 
 # Format code
-uv run black src/
+rye run ruff format src/
 
 # Type checking
-uv run mypy src/
+rye run mypy src/
 
 # Run the tool locally
-PYTHONPATH=src uv run python -m komodo_codex_env.cli --help
+PYTHONPATH=src rye run python -m komodo_codex_env.cli --help
 ```
 
 ## Migration from Bash Script
@@ -250,13 +256,13 @@ Android SDK installation is handled through the main CLI tool:
 
 ```bash
 # Install Android SDK only
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 
 # Check Android SDK status
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-status
 
 # Accept Android licenses
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-licenses
 ```
 
 ### Development Scripts
@@ -310,7 +316,7 @@ When using the main setup command with `android` in platforms, Flutter and Andro
 
 ```bash
 # This installs Flutter via FVM and Android SDK simultaneously
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android
 ```
 
 </edits>

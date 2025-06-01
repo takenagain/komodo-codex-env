@@ -103,28 +103,28 @@ def get_cmdline_tools_url(self) -> str:
 ### Integrated Setup
 ```bash
 # Install Flutter + Android SDK in parallel
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --platforms web,android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --platforms web,android
 
 # Skip Android SDK
-PYTHONPATH=src uv run python -m komodo_codex_env.cli setup --no-android
+PYTHONPATH=src rye run python -m komodo_codex_env.cli setup --no-android
 ```
 
 ### Standalone Installation
 ```bash
 # Using the CLI
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 ```
 
 ### Status and Management
 ```bash
 # Check installation status
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-status
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-status
 
 # Install only Android SDK
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-install
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-install
 
 # Accept licenses
-PYTHONPATH=src uv run python -m komodo_codex_env.cli android-licenses
+PYTHONPATH=src rye run python -m komodo_codex_env.cli android-licenses
 ```
 
 ## Technical Design Decisions
