@@ -99,6 +99,10 @@ class EnvironmentSetup:
         # Required dependencies - platform agnostic names
         required_deps = ["curl", "git", "unzip", "xz-utils", "zip"]
 
+        # Install Node.js for web builds
+        if "web" in self.config.platforms:
+            required_deps.extend(["nodejs", "npm"])
+
         # Check system info
         system_info = self.dep_manager.get_system_info()
         console.print(f"[blue]System: {system_info.get('os', 'Unknown')} {system_info.get('arch', 'Unknown')}[/blue]")
