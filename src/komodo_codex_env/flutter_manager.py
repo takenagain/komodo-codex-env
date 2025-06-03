@@ -259,6 +259,11 @@ class FlutterManager:
         if not self.install_fvm():
             console.print("[red]Cannot install Flutter without FVM[/red]")
             return False
+
+        # Check for sufficient disk space (~1.5 GB required)
+        if not self.dep_manager.check_disk_space(1.5, self.config.home_dir):
+            console.print("[red]Not enough disk space for Flutter installation[/red]")
+            return False
         
         console.print(f"[blue]Installing Flutter {self.config.flutter_version} via FVM...[/blue]")
         
