@@ -78,6 +78,11 @@ class EnvironmentSetup:
                 if not await self._setup_kdf_dependencies():
                     return False
 
+            # Phase 6.5: Melos bootstrap for KDF-SDK
+            if self.config.install_type == "KDF-SDK":
+                if not await self._setup_melos_bootstrap():
+                    return False
+
             # Phase 7: Project setup
             if self.config.install_type in ("ALL", "KW"):
                 if not await self._setup_project():
@@ -322,6 +327,38 @@ class EnvironmentSetup:
 
         loop = asyncio.get_event_loop()
         success = await loop.run_in_executor(None, self.kdf_manager.install_dependencies)
+        return success
+
+    async def _setup_melos_bootstrap(self) -> bool:
+        """Run melos bootstrap for KDF-SDK monorepo setup."""
+        console.print("[bold blue]Phase 6.5: Melos Bootstrap[/bold blue]")
+
+        # Check if melos is installed
+        if not self.flutter_manager.is_melos_installed():
+            console.print("[yellow]Melos not found, attempting to install it first...[/yellow]")
+            melos_success = self.flutter_manager.install_melos()
+            if not melos_success:
+                console.print("[red]Failed to install melos[/red]")
+                return False
+
+        # Run melos bootstrap in the current directory (where melos.yaml should be)
+        project_path = self.config.initial_dir
+        if not project_path:
+            console.print("[yellow]No project directory specified, skipping melos bootstrap[/yellow]")
+            return True
+
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(
+            None, 
+            self.flutter_manager.run_melos_bootstrap, 
+            project_path
+        )
+        
+        if success:
+            console.print("[green]✓ Melos bootstrap completed[/green]")
+        else:
+            console.print("[yellow]⚠ Melos bootstrap had issues, continuing...[/yellow]")
+            
         return success
 
     async def _setup_project(self) -> bool:

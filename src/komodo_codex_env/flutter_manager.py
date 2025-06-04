@@ -376,6 +376,15 @@ class FlutterManager:
             # Add FVM flutter to PATH
             self._setup_fvm_path()
             
+            # Install melos for KDF-SDK install type
+            if self.config.install_type == "KDF-SDK":
+                console.print("[blue]Installing melos for KDF-SDK monorepo management...[/blue]")
+                melos_success = self.install_melos()
+                if melos_success:
+                    console.print("[green]✓ Melos installed successfully for KDF-SDK[/green]")
+                else:
+                    console.print("[yellow]⚠ Melos installation failed, continuing without it[/yellow]")
+            
             return True
             
         except Exception as e:
@@ -398,6 +407,87 @@ class FlutterManager:
             
         except Exception as e:
             console.print(f"[yellow]Warning: PATH setup failed: {e}[/yellow]")
+            return False
+    
+    def install_melos(self) -> bool:
+        """Install melos package manager for monorepo management."""
+        console.print("[blue]Installing melos for monorepo management...[/blue]")
+        
+        try:
+            # Install melos globally using dart pub
+            result = self.executor.run_command(
+                "fvm dart pub global activate melos",
+                timeout=300,
+                check=False
+            )
+            
+            if result.returncode != 0:
+                console.print("[red]Failed to install melos[/red]")
+                console.print(f"[red]Error: {result.stderr if result.stderr else 'Unknown error'}[/red]")
+                return False
+            
+            console.print("[green]✓ Melos installed successfully[/green]")
+            
+            # Verify melos installation
+            if self.is_melos_installed():
+                console.print("[green]✓ Melos installation verified[/green]")
+                return True
+            else:
+                console.print("[yellow]⚠ Melos installed but not found in PATH[/yellow]")
+                # Add pub-cache bin to PATH if not already there
+                pub_cache_bin = self.config.pub_cache_bin_dir
+                self.dep_manager.add_to_path_for_multiple_users(str(pub_cache_bin))
+                return True
+                
+        except Exception as e:
+            console.print(f"[red]Melos installation failed: {e}[/red]")
+            return False
+    
+    def is_melos_installed(self) -> bool:
+        """Check if melos is installed and available."""
+        try:
+            result = self.executor.run_command(
+                "melos --version",
+                capture_output=True,
+                check=False
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+    
+    def run_melos_bootstrap(self, project_path: Path) -> bool:
+        """Run melos bootstrap command in the specified project directory."""
+        if not self.is_melos_installed():
+            console.print("[red]Melos is not installed[/red]")
+            return False
+        
+        console.print("[blue]Running melos bootstrap...[/blue]")
+        
+        try:
+            # Check if melos.yaml exists in the project
+            melos_config = project_path / "melos.yaml"
+            if not melos_config.exists():
+                console.print(f"[yellow]No melos.yaml found at {melos_config}, skipping bootstrap[/yellow]")
+                return True
+            
+            # Run melos bootstrap (melos bs is the short form)
+            result = self.executor.run_command(
+                "melos bs",
+                cwd=project_path,
+                timeout=600,  # 10 minutes timeout for bootstrap
+                check=False
+            )
+            
+            if result.returncode == 0:
+                console.print("[green]✓ Melos bootstrap completed successfully[/green]")
+                return True
+            else:
+                console.print("[yellow]⚠ Melos bootstrap completed with warnings[/yellow]")
+                console.print(f"[yellow]Output: {result.stderr if result.stderr else result.stdout}[/yellow]")
+                return True  # Consider warnings non-critical
+                
+        except Exception as e:
+            console.print(f"[red]Melos bootstrap failed: {e}[/red]")
             return False
     
     def build_project(self, project_path: Path, platforms: Optional[List[str]] = None) -> bool:
