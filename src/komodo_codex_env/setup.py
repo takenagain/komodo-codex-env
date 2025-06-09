@@ -1,4 +1,5 @@
 from sys import exit
+
 """Main setup orchestrator that coordinates all components."""
 
 import asyncio
@@ -30,7 +31,7 @@ class EnvironmentSetup:
         # Initialize components
         self.executor = CommandExecutor(
             parallel_execution=config.parallel_execution,
-            max_workers=config.max_parallel_jobs if config.max_parallel_jobs else 4
+            max_workers=config.max_parallel_jobs if config.max_parallel_jobs else 4,
         )
         self.dep_manager = DependencyManager(self.executor)
         self.git_manager = GitManager(self.executor)
@@ -41,11 +42,13 @@ class EnvironmentSetup:
 
     async def run_setup(self) -> bool:
         """Run the complete environment setup."""
-        console.print(Panel.fit(
-            f"[bold blue]Komodo Codex Environment Setup v{self.config.script_version}[/bold blue]\n"
-            f"Setting up Flutter {self.config.flutter_version} environment",
-            title="Environment Setup"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold blue]Komodo Codex Environment Setup v{self.config.script_version}[/bold blue]\n"
+                f"Setting up Flutter {self.config.flutter_version} environment",
+                title="Environment Setup",
+            )
+        )
 
         try:
             # Phase 1: System dependencies
@@ -78,6 +81,10 @@ class EnvironmentSetup:
                 if not await self._setup_kdf_dependencies():
                     return False
 
+            if self.config.install_type == "KDF-SDK":
+                if not await self._install_melos():
+                    return False
+
             # Phase 7: Project setup
             if self.config.install_type in ("ALL", "KW"):
                 if not await self._setup_project():
@@ -105,7 +112,9 @@ class EnvironmentSetup:
 
         # Check system info
         system_info = self.dep_manager.get_system_info()
-        console.print(f"[blue]System: {system_info.get('os', 'Unknown')} {system_info.get('arch', 'Unknown')}[/blue]")
+        console.print(
+            f"[blue]System: {system_info.get('os', 'Unknown')} {system_info.get('arch', 'Unknown')}[/blue]"
+        )
 
         if system_info.get("distro"):
             console.print(f"[blue]Distribution: {system_info['distro']}[/blue]")
@@ -129,7 +138,9 @@ class EnvironmentSetup:
         console.print("[bold blue]Phase 2: Git Operations[/bold blue]")
 
         if not self.git_manager.is_git_repo():
-            console.print("[yellow]Not in a Git repository, skipping Git operations[/yellow]")
+            console.print(
+                "[yellow]Not in a Git repository, skipping Git operations[/yellow]"
+            )
             return True
 
         repo_name = self.git_manager.get_repo_name()
@@ -146,7 +157,9 @@ class EnvironmentSetup:
 
     async def _setup_flutter_and_android(self) -> bool:
         """Set up Flutter SDK and Android SDK in parallel."""
-        console.print("[bold blue]Phase 3: Flutter and Android SDK Installation[/bold blue]")
+        console.print(
+            "[bold blue]Phase 3: Flutter and Android SDK Installation[/bold blue]"
+        )
 
         if self.config.parallel_execution:
             # Run Flutter and Android setup in parallel
@@ -163,7 +176,9 @@ class EnvironmentSetup:
                 if success:
                     console.print("[green]✓ Flutter installed and configured[/green]")
                 else:
-                    console.print("[yellow]⚠ Flutter installed but configuration had issues[/yellow]")
+                    console.print(
+                        "[yellow]⚠ Flutter installed but configuration had issues[/yellow]"
+                    )
                 return True
 
             # Android setup task
@@ -174,18 +189,27 @@ class EnvironmentSetup:
 
                 # Check if android is in platforms list
                 if "android" not in self.config.platforms:
-                    console.print("[blue]Android not in target platforms, skipping SDK installation[/blue]")
+                    console.print(
+                        "[blue]Android not in target platforms, skipping SDK installation[/blue]"
+                    )
                     return True
 
                 # Run Android SDK installation in a thread since it's not async
                 import asyncio
+
                 loop = asyncio.get_event_loop()
-                success = await loop.run_in_executor(None, self.android_manager.install_android_sdk)
+                success = await loop.run_in_executor(
+                    None, self.android_manager.install_android_sdk
+                )
 
                 if success:
-                    console.print("[green]✓ Android SDK installed and configured[/green]")
+                    console.print(
+                        "[green]✓ Android SDK installed and configured[/green]"
+                    )
                 else:
-                    console.print("[yellow]⚠ Android SDK installation had issues[/yellow]")
+                    console.print(
+                        "[yellow]⚠ Android SDK installation had issues[/yellow]"
+                    )
                 return success
 
             tasks.append(setup_flutter())
@@ -195,8 +219,12 @@ class EnvironmentSetup:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Check results
-            flutter_success = results[0] if not isinstance(results[0], Exception) else False
-            android_success = results[1] if not isinstance(results[1], Exception) else True  # Default to True if skipped
+            flutter_success = (
+                results[0] if not isinstance(results[0], Exception) else False
+            )
+            android_success = (
+                results[1] if not isinstance(results[1], Exception) else True
+            )  # Default to True if skipped
 
             if isinstance(results[0], Exception):
                 console.print(f"[red]Flutter setup failed: {results[0]}[/red]")
@@ -231,7 +259,9 @@ class EnvironmentSetup:
         if success:
             console.print("[green]✓ Flutter installed and configured[/green]")
         else:
-            console.print("[yellow]⚠ Flutter installed but configuration had issues[/yellow]")
+            console.print(
+                "[yellow]⚠ Flutter installed but configuration had issues[/yellow]"
+            )
 
         return True
 
@@ -243,13 +273,18 @@ class EnvironmentSetup:
 
         # Check if android is in platforms list
         if "android" not in self.config.platforms:
-            console.print("[blue]Android not in target platforms, skipping SDK installation[/blue]")
+            console.print(
+                "[blue]Android not in target platforms, skipping SDK installation[/blue]"
+            )
             return True
 
         # Run Android SDK installation
         import asyncio
+
         loop = asyncio.get_event_loop()
-        success = await loop.run_in_executor(None, self.android_manager.install_android_sdk)
+        success = await loop.run_in_executor(
+            None, self.android_manager.install_android_sdk
+        )
 
         if success:
             console.print("[green]✓ Android SDK installed and configured[/green]")
@@ -275,7 +310,9 @@ class EnvironmentSetup:
         )
 
         if flutter_bin_success and pub_cache_success:
-            console.print("[green]✓ Environment variables configured for all users[/green]")
+            console.print(
+                "[green]✓ Environment variables configured for all users[/green]"
+            )
         else:
             console.print("[yellow]⚠ Environment configuration had issues[/yellow]")
 
@@ -306,7 +343,9 @@ class EnvironmentSetup:
                 # Update git exclude
                 self.doc_manager.update_git_exclude(target_dir)
 
-                console.print(f"[green]✓ Documentation saved ({len(documents)} files)[/green]")
+                console.print(
+                    f"[green]✓ Documentation saved ({len(documents)} files)[/green]"
+                )
             else:
                 console.print("[yellow]⚠ Documentation setup had issues[/yellow]")
 
@@ -321,7 +360,17 @@ class EnvironmentSetup:
         console.print("[bold blue]Phase 6: KDF Dependencies[/bold blue]")
 
         loop = asyncio.get_event_loop()
-        success = await loop.run_in_executor(None, self.kdf_manager.install_dependencies)
+        success = await loop.run_in_executor(
+            None, self.kdf_manager.install_dependencies
+        )
+        return success
+
+    async def _install_melos(self) -> bool:
+        """Install the melos CLI for Dart monorepos."""
+        console.print("[bold blue]Installing melos CLI[/bold blue]")
+
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, self.flutter_manager.install_melos)
         return success
 
     async def _setup_project(self) -> bool:
@@ -333,16 +382,16 @@ class EnvironmentSetup:
         # Check if this is a Flutter project
         pubspec_file = project_path / "pubspec.yaml"
         if not pubspec_file.exists():
-            console.print("[yellow]No pubspec.yaml found, skipping Flutter project setup[/yellow]")
+            console.print(
+                "[yellow]No pubspec.yaml found, skipping Flutter project setup[/yellow]"
+            )
             return True
 
         try:
             # Get dependencies
             console.print("[blue]Getting Flutter dependencies...[/blue]")
             result = self.executor.run_command(
-                "fvm flutter pub get",
-                cwd=project_path,
-                check=False
+                "fvm flutter pub get", cwd=project_path, check=False
             )
 
             if result.returncode == 0:
@@ -356,7 +405,7 @@ class EnvironmentSetup:
                 "fvm dart run build_runner build --delete-conflicting-outputs",
                 cwd=project_path,
                 check=False,
-                timeout=120
+                timeout=120,
             )
 
             if result.returncode == 0:
@@ -366,13 +415,19 @@ class EnvironmentSetup:
 
             # Build project for configured platforms
             if self.config.platforms:
-                console.print(f"[blue]Building for platforms: {', '.join(self.config.platforms)}[/blue]")
-                build_success = self.flutter_manager.build_project(project_path, self.config.platforms)
+                console.print(
+                    f"[blue]Building for platforms: {', '.join(self.config.platforms)}[/blue]"
+                )
+                build_success = self.flutter_manager.build_project(
+                    project_path, self.config.platforms
+                )
 
                 if build_success:
                     console.print("[green]✓ Project builds completed[/green]")
                 else:
-                    console.print("[yellow]⚠ Some builds failed (expected for initial setup)[/yellow]")
+                    console.print(
+                        "[yellow]⚠ Some builds failed (expected for initial setup)[/yellow]"
+                    )
 
             return True
 
@@ -393,18 +448,20 @@ class EnvironmentSetup:
         ]
 
         if self.config.platforms:
-            summary.append(f"[blue]Configured platforms: {', '.join(self.config.platforms)}[/blue]")
+            summary.append(
+                f"[blue]Configured platforms: {', '.join(self.config.platforms)}[/blue]"
+            )
 
         if self.config.install_android_sdk and "android" in self.config.platforms:
             android_info = self.android_manager.get_android_info()
             if android_info.get("status") == "installed":
-                summary.append(f"[blue]Android SDK: {android_info.get('android_home', 'Installed')}[/blue]")
+                summary.append(
+                    f"[blue]Android SDK: {android_info.get('android_home', 'Installed')}[/blue]"
+                )
 
-        console.print(Panel.fit(
-            "\n".join(summary),
-            title="Setup Complete",
-            border_style="green"
-        ))
+        console.print(
+            Panel.fit("\n".join(summary), title="Setup Complete", border_style="green")
+        )
 
         # Print next steps
         next_steps = [
@@ -423,16 +480,16 @@ class EnvironmentSetup:
         ]
 
         if self.config.install_android_sdk and "android" in self.config.platforms:
-            next_steps.extend([
-                "",
-                "Android development:",
-                "  flutter doctor --android-licenses  - Accept Android licenses",
-                "  flutter devices                    - List available devices",
-                "  flutter emulators                  - List available emulators",
-            ])
+            next_steps.extend(
+                [
+                    "",
+                    "Android development:",
+                    "  flutter doctor --android-licenses  - Accept Android licenses",
+                    "  flutter devices                    - List available devices",
+                    "  flutter emulators                  - List available emulators",
+                ]
+            )
 
-        console.print(Panel.fit(
-            "\n".join(next_steps),
-            title="Next Steps",
-            border_style="blue"
-        ))
+        console.print(
+            Panel.fit("\n".join(next_steps), title="Next Steps", border_style="blue")
+        )
