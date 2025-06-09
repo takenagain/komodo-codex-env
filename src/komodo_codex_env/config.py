@@ -22,7 +22,7 @@ class EnvironmentConfig:
     max_parallel_jobs: Optional[int] = None
 
     # Flutter configuration
-    flutter_version: str = "3.32.0"
+    flutter_version: str = "stable"
     flutter_install_method: str = "precompiled"  # "git" or "precompiled"
     platforms: List[str] = field(default_factory=lambda: ["android", "web"])
 

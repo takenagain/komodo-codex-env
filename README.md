@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/mai
 
 # Example with custom options
 curl -fsSL https://raw.githubusercontent.com/KomodoPlatform/komodo-codex-env/main/install.sh | bash -s -- \
-  --flutter-version 3.32.0 \
+  --flutter-version stable \
   --platforms web,android \
   --install-type ALL
 ```
@@ -129,7 +129,7 @@ The tool supports configuration via environment variables:
 
 ```bash
 # Flutter version (FVM will manage the actual installation)
-export FLUTTER_VERSION=3.32.0
+export FLUTTER_VERSION=stable
 
 # Platform targets
 export PLATFORMS=web,android,linux
@@ -235,7 +235,7 @@ fvm list
 fvm install 3.29.3
 
 # Set global default
-fvm global 3.32.0
+fvm global stable
 
 # Use for current project
 fvm use 3.29.3

@@ -199,7 +199,7 @@ class FVMLocationUnitTest(unittest.TestCase):
 
     def test_flutter_version_configuration(self):
         """Test Flutter version configuration through FVM."""
-        flutter_version = "3.32.0"
+        flutter_version = "stable"
         self.config.flutter_version = flutter_version
         
         flutter_manager = FlutterManager(self.config, self.executor, self.dep_manager)
@@ -247,9 +247,9 @@ class EnvironmentConfigurationUnitTest(unittest.TestCase):
     def test_flutter_version_configuration(self):
         """Test Flutter version configuration."""
         config = EnvironmentConfig()
-        config.flutter_version = "3.32.0"
+        config.flutter_version = "stable"
         
-        self.assertEqual(config.flutter_version, "3.32.0")
+        self.assertEqual(config.flutter_version, "stable")
 
     def test_paths_configuration(self):
         """Test path configurations are valid Path objects."""

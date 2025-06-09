@@ -29,7 +29,7 @@ def cli():
 
 
 @cli.command()
-@click.option("--flutter-version", default="3.32.0", help="Flutter version to install")
+@click.option("--flutter-version", default="stable", help="Flutter version to install")
 @click.option("--install-method", type=click.Choice(["git", "precompiled"]), default="precompiled", help="Flutter installation method")
 @click.option(
     "--install-type",

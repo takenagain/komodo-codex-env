@@ -116,14 +116,14 @@ kce-fvm-list
 ```bash
 # Direct FVM commands
 fvm list                    # List installed Flutter versions
-fvm install 3.32.0         # Install specific Flutter version
-fvm use 3.32.0              # Set global Flutter version
+fvm install stable         # Install default Flutter version
+fvm use stable              # Set global Flutter version
 fvm releases                # List available Flutter releases
 
 # Through Komodo Codex Environment
 kce-fvm-list               # List installed versions
-kce-fvm-install 3.32.0     # Install version
-kce-fvm-use 3.32.0         # Switch version
+kce-fvm-install stable     # Install version
+kce-fvm-use stable         # Switch version
 kce-fvm-releases           # List available releases
 
 # Flutter/Dart with FVM
