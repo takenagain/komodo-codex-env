@@ -17,7 +17,7 @@
 #
 # After installation, the CLI runs with these default values:
 # - kce-full-setup uses: --platforms web (web only by default, use --platforms web,android,linux for full setup)
-# - Flutter version: 3.32.0 (configurable via --flutter-version)
+# - Flutter version: stable (configurable via --flutter-version)
 # - Install method: precompiled (faster than building from source)
 # - KDF docs: enabled (--kdf-docs flag)
 # - Verbose output: enabled (--verbose flag)
@@ -47,7 +47,7 @@ PYTHON_MIN_VERSION="3.11"
 REQUIRED_PYTHON_VERSION="3.13"
 ALLOW_ROOT=false
 DEBUG=false
-FLUTTER_VERSION="3.32.0"
+FLUTTER_VERSION="stable"
 PLATFORMS="web"
 INSTALL_TYPE="ALL"
 

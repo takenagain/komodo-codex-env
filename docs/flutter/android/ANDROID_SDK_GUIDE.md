@@ -335,7 +335,7 @@ export PLATFORMS="web,android,linux"
 
 PYTHONPATH=src rye run python -m komodo_codex_env.cli setup \
   --platforms $PLATFORMS \
-  --flutter-version 3.32.0 \
+  --flutter-version stable \
   --verbose
 ```
 

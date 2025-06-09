@@ -24,7 +24,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "android"]
             config.install_android_sdk = True
             config.parallel_execution = True
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
             config.android_home = Path(temp_dir) / "Android" / "Sdk"
 
@@ -50,7 +50,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "android"]
             config.install_android_sdk = True
             config.parallel_execution = False
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
             config.android_home = Path(temp_dir) / "Android" / "Sdk"
 
@@ -71,7 +71,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "linux"]
             config.install_android_sdk = True
             config.parallel_execution = True
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
 
             setup = EnvironmentSetup(config)
@@ -91,7 +91,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "android"]
             config.install_android_sdk = False
             config.parallel_execution = True
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
 
             setup = EnvironmentSetup(config)
@@ -111,7 +111,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "android"]
             config.install_android_sdk = True
             config.parallel_execution = True
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
 
             setup = EnvironmentSetup(config)
@@ -130,7 +130,7 @@ class SetupIntegrationTests(unittest.IsolatedAsyncioTestCase):
             config.platforms = ["web", "android"]
             config.install_android_sdk = True
             config.parallel_execution = True
-            config.flutter_version = "3.32.0"
+            config.flutter_version = "stable"
             config.initial_dir = Path(temp_dir)
 
             setup = EnvironmentSetup(config)

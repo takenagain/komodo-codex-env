@@ -198,7 +198,7 @@ class FlutterAndroidIntegrationTest(unittest.TestCase):
             export USER="testuser" &&
             cd ~/.komodo-codex-env &&
             uv run komodo-codex-env setup \
-                --flutter-version 3.32.0 \
+                --flutter-version stable \
                 --install-method precompiled \
                 --platforms web,android,linux \
                 --verbose
