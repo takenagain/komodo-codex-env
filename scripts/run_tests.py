@@ -35,7 +35,7 @@ def run_unit_tests(verbose=False, parallel=False):
     return run_command(cmd)
 
 def run_integration_tests(verbose=False, timeout=3600):
-    """Run integration tests with Docker."""
+    """Run integration tests with container engine (Docker/Podman)."""
     cmd = ["rye", "run", "pytest", "tests/integration/"]
     
     if verbose:
@@ -122,6 +122,13 @@ Examples:
   python scripts/run_tests.py specific tests/unit/test_setup.py  # Run specific test
   python scripts/run_tests.py coverage                # Run with coverage
   python scripts/run_tests.py lint                    # Run linting and tests
+
+Container Engine Configuration:
+  Set CONTAINER_ENGINE environment variable to choose between Docker and Podman:
+  CONTAINER_ENGINE=docker python scripts/run_tests.py integration
+  CONTAINER_ENGINE=podman python scripts/run_tests.py integration
+  
+  If not set, the system will auto-detect available container engines.
         """
     )
     

@@ -45,11 +45,13 @@ python scripts/run_tests.py all
 
 Test runner helper script providing convenient commands for running different types of tests:
 
-- Unit test execution with optional parallelization
-- Integration test execution with Docker
-- Coverage reporting and analysis
-- Linting and syntax checking
-- Specific test file execution
+- **`run_tests.py`** - Test runner helper script for development
+  - Unit test execution with optional parallelization
+  - Integration test execution with container engine (Docker/Podman)
+  - Coverage reporting and analysis
+  - Linting and syntax checking
+  - Specific test file execution
+  - Container engine configuration support
 
 ### verify_fvm.py
 

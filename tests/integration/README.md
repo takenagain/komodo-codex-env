@@ -8,7 +8,7 @@ The integration tests verify the complete pipeline from environment setup to bui
 
 ## Test Structure
 
-### Docker-Based Integration Tests
+### Container-Based Integration Tests
 
 1. **test_flutter_only_integration.py** - Tests Flutter development without Android SDK
 2. **test_flutter_android_integration.py** - Tests Flutter development with Android SDK
@@ -24,7 +24,8 @@ The integration tests verify the complete pipeline from environment setup to bui
 
 ### Key Features
 
-- **Docker-based isolation** - Each test runs in a clean Docker container
+- **Container-based isolation** - Each test runs in a clean container (Docker or Podman)
+- **Multi-engine support** - Works with both Docker and Podman container engines
 - **Proper user management** - Tests run as `testuser` (non-root) for realistic scenarios
 - **Comprehensive logging** - Rich logging with different verbosity levels
 - **End-to-end verification** - Each test creates and builds a Flutter application
@@ -39,10 +40,26 @@ The integration tests verify the complete pipeline from environment setup to bui
 pip install rich requests
 ```
 
-### Docker Requirements
+### Container Engine Requirements
 
-- Docker must be installed and accessible
+- Either Docker or Podman must be installed and accessible
 - Network access for downloading dependencies
+- See [Container Engine Configuration](../../docs/CONTAINER_ENGINE_CONFIGURATION.md) for detailed setup
+
+#### Container Engine Selection
+
+The tests support both Docker and Podman. You can specify which engine to use:
+
+```bash
+# Use Docker (default if available)
+export CONTAINER_ENGINE=docker
+
+# Use Podman
+export CONTAINER_ENGINE=podman
+
+# Auto-detect (tries Docker first, then Podman)
+unset CONTAINER_ENGINE
+```
 
 ## Usage
 
@@ -130,10 +147,11 @@ Key environment variables used:
 
 ### Container Configuration
 
-Docker containers are configured with:
+Containers (Docker/Podman) are configured with:
 - 1-2 hour timeout for builds
 - Temporary filesystem mounts for performance optimization
 - Proper user permission setup
+- Engine-specific optimizations (rootless for Podman, privileged for Docker when needed)
 
 ## Debugging
 
@@ -145,13 +163,15 @@ Tests use Rich logging for clear output:
 
 ### Common Issues
 
-1. **Docker not available**
-   - Ensure Docker is installed and running
-   - Check user permissions for Docker access
+1. **Container engine not available**
+   - Ensure Docker or Podman is installed and running
+   - Check user permissions for container engine access
+   - Try switching engines: `export CONTAINER_ENGINE=podman` or `export CONTAINER_ENGINE=docker`
 
 2. **Container startup failures**
    - Check available system resources
-   - Verify Docker image builds successfully
+   - Verify container image builds successfully
+   - Try cleaning container cache: `docker system prune` or `podman system prune`
 
 3. **Android SDK installation failures**
    - Check network connectivity
@@ -167,17 +187,33 @@ Tests use Rich logging for clear output:
 
 Check container logs:
 ```bash
+# Docker
 docker logs <container_id>
+# Podman
+podman logs <container_id>
 ```
 
 Connect to running container:
 ```bash
+# Docker
 docker exec -it <container_id> bash
+# Podman
+podman exec -it <container_id> bash
 ```
 
 Check environment variables:
 ```bash
+# Docker
 docker exec <container_id> env
+# Podman
+podman exec <container_id> env
+```
+
+Check which container engine is being used:
+```bash
+echo $CONTAINER_ENGINE  # Shows configured engine
+# or let the system auto-detect and show you:
+python -c "from tests.integration.container_engine import ContainerEngine; print(ContainerEngine().engine)"
 ```
 
 ## Performance Considerations
@@ -201,8 +237,11 @@ Tests may require significant resources:
 
 1. **Parallel execution** - Use `pytest -n <workers>` for concurrent test execution
 2. **Selective testing** - Run only the tests you need during development
-3. **Docker layer caching** - Docker images are cached between runs
+3. **Container layer caching** - Container images are cached between runs
 4. **Container reuse** - Consider keeping containers for debugging
+5. **Engine selection** - Choose the most suitable engine for your environment:
+   - **Docker**: Traditional, widely supported
+   - **Podman**: Rootless, more secure, good for rootless environments
 
 ## CI/CD Integration
 
@@ -253,8 +292,9 @@ jobs:
 1. **Android SDK Path Consistency**: Fixed mismatched default paths between config and manager
 2. **Permission Handling**: Added accessibility checks for FVM installation paths
 3. **Pytest Configuration**: Added comprehensive test configuration with async settings
-4. **Docker Environment**: Improved container setup with proper user permissions
-5. **Error Handling**: Enhanced robustness with graceful fallbacks and skip conditions
+4. **Container Engine Support**: Added Docker and Podman support with automatic detection
+5. **Docker Environment**: Improved container setup with proper user permissions
+6. **Error Handling**: Enhanced robustness with graceful fallbacks and skip conditions
 
 ### Test Execution
 

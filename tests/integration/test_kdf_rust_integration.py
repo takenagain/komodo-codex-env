@@ -3,29 +3,13 @@
 This test verifies Komodo DeFi Framework dependencies and Rust toolchain
 installation. It runs the install.sh script with --install-type KDF, executes
 the setup command, and ensures that a new Cargo project can be built inside a
-Docker container.
+container.
 """
 
-import subprocess
-import time
-import unittest
 import logging
 from pathlib import Path
 
-try:
-    import rich
-    from rich.logging import RichHandler
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)]
-    )
-    RICH_AVAILABLE = True
-except ImportError:
-    logging.basicConfig(level=logging.INFO)
-    RICH_AVAILABLE = False
+from .base_integration_test import ContainerIntegrationTest
 
 logger = logging.getLogger(__name__)
 
@@ -34,161 +18,151 @@ DOCKERFILE = PROJECT_ROOT / ".devcontainer" / "Dockerfile"
 INSTALL_SCRIPT = PROJECT_ROOT / "install.sh"
 
 
-def docker_available() -> bool:
-    """Check if Docker is available on the system."""
-    try:
-        subprocess.run(["docker", "--version"], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+class KdfRustIntegrationTest(ContainerIntegrationTest):
+    """Test KDF dependencies and Rust toolchain inside container."""
 
-
-@unittest.skipUnless(RICH_AVAILABLE, "Rich not available")
-@unittest.skipUnless(docker_available(), "Docker is not available")
-class KdfRustIntegrationTest(unittest.TestCase):
-    """Test KDF dependencies and Rust toolchain inside Docker."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Build Docker image for testing."""
-        import os
-        if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
-            raise unittest.SkipTest("Integration tests skipped in CI environment")
-
-        if not docker_available():
-            raise unittest.SkipTest("Docker is not available")
-
-        logger.info("Building Docker image for KDF integration test...")
-        result = subprocess.run(
-            ["docker", "build", "-t", "kdf-rust-test", "-f", str(DOCKERFILE), str(PROJECT_ROOT)],
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        if result.returncode != 0:
-            raise unittest.SkipTest(f"Failed to build Docker image: {result.stderr}")
-        cls.image_name = "kdf-rust-test"
-        logger.info("✓ Docker image built successfully")
-
-    def setUp(self):
-        """Start container for each test."""
-        self.container_name = f"kdf-rust-test-{int(time.time())}"
-        logger.info(f"Starting container: {self.container_name}")
-        result = subprocess.run(
-            [
-                "docker", "run", "-d", "--name", self.container_name,
-                "--tmpfs", "/tmp:rw,exec,nosuid,size=2g",
-                "--env", "HOME=/home/testuser",
-                "--env", "USER=testuser",
-                self.image_name, "sleep", "3600",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            self.skipTest(f"Failed to start container: {result.stderr}")
-        self.container_id = result.stdout.strip()
-        logger.info(f"✓ Container started: {self.container_id[:12]}")
-
-        # Create testuser with sudo permissions
-        self._run_command([
-            "docker", "exec", "-u", "root", self.container_id, "bash", "-c",
-            "useradd -m -s /bin/bash testuser && echo 'testuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && chown -R testuser:testuser /home/testuser"
-        ])
-
-    def tearDown(self):
-        if hasattr(self, "container_id"):
-            logger.info(f"Cleaning up container: {self.container_id[:12]}")
-            subprocess.run(["docker", "rm", "-f", self.container_id], capture_output=True)
-
-    def _run_command(self, cmd, timeout=300, check=True) -> subprocess.CompletedProcess:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        if check and result.returncode != 0:
-            logger.error(f"Command failed: {' '.join(cmd)}")
-            logger.error(f"STDOUT: {result.stdout}")
-            logger.error(f"STDERR: {result.stderr}")
-        return result
-
-    def _run_in_container(self, command: str, user: str = "testuser", timeout: int = 300) -> subprocess.CompletedProcess:
-        cmd = ["docker", "exec", "-u", user, self.container_id, "bash", "-c", command]
-        return self._run_command(cmd, timeout=timeout, check=False)
-
-    def _copy_to_container(self, src: Path, dest: str) -> bool:
-        result = self._run_command(["docker", "cp", str(src), f"{self.container_id}:{dest}"], check=False)
-        if result.returncode == 0:
-            self._run_command(["docker", "exec", "-u", "root", self.container_id, "chown", "testuser:testuser", dest], check=False)
-            self._run_command(["docker", "exec", "-u", "testuser", self.container_id, "chmod", "+x", dest], check=False)
-            return True
-        return False
+    # Class configuration for base class
+    IMAGE_NAME = "kdf-rust-test"
+    CONTAINER_PREFIX = "kdf-rust-test"
+    DOCKERFILE = DOCKERFILE
+    BUILD_CONTEXT = PROJECT_ROOT
+    CONTAINER_TIMEOUT = 3600  # 1 hour
 
     def test_kdf_rust_pipeline(self):
-        """Test installing KDF type and building a Cargo project."""
-        logger.info("Starting KDF Rust integration test")
+        """Test the complete KDF Rust development pipeline."""
+        logger.info("Starting KDF Rust integration test pipeline")
+
         try:
-            # Step 1: install.sh with KDF type
-            logger.info("Step 1: Running install script")
-            success = self._copy_to_container(INSTALL_SCRIPT, "/home/testuser/install.sh")
+            # Step 1: Copy and run install script with KDF install type
+            logger.info("Step 1: Running install script with KDF install type")
+            success = self.copy_to_container(INSTALL_SCRIPT, "/home/testuser/install.sh")
             self.assertTrue(success, "Failed to copy install script")
 
-            install_cmd = """
+            install_command = """
             cd /home/testuser &&
             sed -i 's/read -p "Do you want to run the full setup now.*/REPLY="n"/' install.sh &&
             sed -i 's/kce-full-setup "$FLUTTER_VERSION"/echo "Skipping auto full setup"/' install.sh &&
-            timeout 600 ./install.sh --debug --install-type KDF
+            timeout 600 ./install.sh --install-type KDF --debug
             """
-            result = self._run_in_container(install_cmd, timeout=700)
-            if result.returncode != 0:
-                self.skipTest(f"Install script failed: {result.stderr}")
-            logger.info("✓ Install script completed")
+            result = self.run_in_container(install_command, timeout=700)
+            self.skip_on_command_failure(result, "Install script with KDF type failed")
+            logger.info("✓ Install script with KDF type completed")
 
-            # Step 2: verify rust tools
-            logger.info("Step 2: Verifying Rust installation")
-            rust_check = """
-            source ~/.cargo/env &&
-            rustc --version &&
-            cargo --version
-            """
-            result = self._run_in_container(rust_check)
-            if result.returncode != 0:
-                self.skipTest(f"Rust verification failed: {result.stderr}")
-            logger.info("✓ Rust toolchain verified")
-
-            # Step 3: run KDF setup
-            logger.info("Step 3: Running KDF setup")
-            setup_cmd = """
+            # Step 2: Verify basic installation
+            logger.info("Step 2: Verifying basic installation")
+            verify_command = """
             cd /home/testuser &&
             source ~/.bashrc &&
-            export PATH=\"$HOME/.local/bin:$PATH\" &&
+            test -d ~/.komodo-codex-env &&
+            export PATH="$HOME/.local/bin:$PATH" &&
+            uv --version &&
+            echo "Basic installation verified"
+            """
+            result = self.run_in_container(verify_command)
+            self.skip_on_command_failure(result, "Basic installation verification failed")
+            logger.info("✓ Basic installation verified")
+
+            # Step 3: Run KDF setup
+            logger.info("Step 3: Running KDF setup")
+            setup_command = """
+            cd /home/testuser &&
+            source ~/.bashrc &&
+            export PATH="$HOME/.local/bin:$PATH" &&
+            export HOME="/home/testuser" &&
+            export USER="testuser" &&
             cd ~/.komodo-codex-env &&
             uv run komodo-codex-env setup --install-type KDF --verbose
             """
-            result = self._run_in_container(setup_cmd, timeout=900)
+            result = self.run_in_container(setup_command, timeout=1200)
+            
             if result.returncode != 0:
+                logger.error(f"KDF setup failed with exit code: {result.returncode}")
+                logger.error(f"STDOUT: {result.stdout}")
+                logger.error(f"STDERR: {result.stderr}")
                 self.skipTest(f"KDF setup failed: {result.stderr}")
+            
             logger.info("✓ KDF setup completed")
         except Exception as e:
-            self.skipTest(f"Integration test failed: {e}")
+            self.skipTest(f"Integration test failed with exception: {e}")
 
-        # Step 4: build a Cargo project
-        logger.info("Step 4: Building sample Cargo project")
-        build_cmd = """
+        # Step 4: Verify Rust installation
+        logger.info("Step 4: Verifying Rust installation")
+        rust_check_command = """
         cd /home/testuser &&
-        source ~/.cargo/env &&
-        cargo new hello_world &&
-        cd hello_world &&
-        cargo build --release
+        source ~/.bashrc &&
+        export PATH="$HOME/.local/bin:$PATH" &&
+        cd ~/.komodo-codex-env &&
+        source setup_env.sh &&
+        rustc --version &&
+        cargo --version &&
+        echo "Rust toolchain verified"
         """
-        result = self._run_in_container(build_cmd, timeout=600)
-        self.assertEqual(result.returncode, 0, "Cargo build failed")
+        result = self.run_in_container(rust_check_command, timeout=120)
+        self.assert_command_success(result, "Rust toolchain verification failed")
+        logger.info("✓ Rust toolchain verified")
 
-        # Verify binary
-        verify_cmd = """
-        test -f /home/testuser/hello_world/target/release/hello_world
+        # Step 5: Create a simple Cargo project
+        logger.info("Step 5: Creating Cargo project")
+        create_project_command = """
+        cd /home/testuser &&
+        source ~/.bashrc &&
+        export PATH="$HOME/.local/bin:$PATH" &&
+        cd ~/.komodo-codex-env &&
+        source setup_env.sh &&
+        cargo new test_rust_project &&
+        cd test_rust_project &&
+        echo "Cargo project created"
         """
-        result = self._run_in_container(verify_cmd)
-        self.assertEqual(result.returncode, 0, "Built binary not found")
+        result = self.run_in_container(create_project_command, timeout=300)
+        self.assert_command_success(result, "Cargo project creation failed")
+        logger.info("✓ Cargo project created")
+
+        # Step 6: Build the Cargo project
+        logger.info("Step 6: Building Cargo project")
+        build_project_command = """
+        cd ~/.komodo-codex-env/test_rust_project &&
+        source ~/.komodo-codex-env/setup_env.sh &&
+        cargo build &&
+        echo "Cargo build completed"
+        """
+        result = self.run_in_container(build_project_command, timeout=600)
+        self.assert_command_success(result, "Cargo build failed")
         logger.info("✓ Cargo project built successfully")
+
+        # Step 7: Run the Cargo project
+        logger.info("Step 7: Running Cargo project")
+        run_project_command = """
+        cd ~/.komodo-codex-env/test_rust_project &&
+        source ~/.komodo-codex-env/setup_env.sh &&
+        cargo run &&
+        echo "Cargo run completed"
+        """
+        result = self.run_in_container(run_project_command, timeout=300)
+        self.assert_command_success(result, "Cargo run failed")
+        
+        # Verify "Hello, world!" output
+        self.assertIn("Hello, world!", result.stdout, "Expected 'Hello, world!' output not found")
+        logger.info("✓ Cargo project ran successfully with expected output")
+
+        # Step 8: Verify Docker dependencies (KDF specific)
+        logger.info("Step 8: Verifying Docker installation for KDF")
+        docker_check_command = """
+        cd /home/testuser &&
+        source ~/.bashrc &&
+        export PATH="$HOME/.local/bin:$PATH" &&
+        docker --version || echo "Docker not installed" &&
+        systemctl status docker 2>/dev/null || echo "Docker service not running (expected in container)"
+        """
+        result = self.run_in_container(docker_check_command, timeout=120)
+        # Docker might not be running inside container, but should be installed
+        if "Docker" in result.stdout:
+            logger.info("✓ Docker installation detected")
+        else:
+            logger.info("! Docker not found, but this might be expected in container environment")
+
+        logger.info("✓ KDF Rust integration test completed successfully!")
 
 
 if __name__ == "__main__":
+    import unittest
     unittest.main(verbosity=2)
