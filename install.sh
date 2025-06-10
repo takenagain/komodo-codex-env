@@ -731,6 +731,11 @@ if [[ -d "$HOME/.komodo-codex-env/.venv" ]]; then
     source "$HOME/.komodo-codex-env/.venv/bin/activate"
 fi
 
+# Source Cargo environment if it exists (for KDF dependencies)
+if [[ -f "$HOME/.cargo/env" ]]; then
+    source "$HOME/.cargo/env"
+fi
+
 # Komodo Codex Environment aliases
 if command -v uv >/dev/null 2>&1; then
     alias komodo-codex-env="cd $HOME/.komodo-codex-env && PYTHONPATH=src uv run python -m komodo_codex_env.cli"

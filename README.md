@@ -191,6 +191,13 @@ rye sync
 # Run tests
 rye run pytest
 
+# Run integration tests with container engine support (Docker/Podman)
+python scripts/run_tests.py integration
+
+# Run tests with specific container engine
+CONTAINER_ENGINE=docker python scripts/run_tests.py integration
+CONTAINER_ENGINE=podman python scripts/run_tests.py integration
+
 # Format code
 rye run ruff format src/
 
@@ -273,6 +280,12 @@ The scripts directory provides utilities for development and verification:
 # Run development tests
 python scripts/run_tests.py unit
 
+# Run integration tests (requires Docker or Podman)
+python scripts/run_tests.py integration
+
+# Use specific container engine for integration tests
+CONTAINER_ENGINE=podman python scripts/run_tests.py integration
+
 # Set up development environment
 ./scripts/setup_dev_env.sh
 
@@ -288,6 +301,52 @@ python scripts/verify_fvm.py
 - **Environment Setup**: Configures ANDROID_HOME and PATH variables
 - **License Management**: Handles Android SDK license acceptance
 - **Cross-Platform**: Supports Linux, macOS, and Windows
+
+## Testing
+
+The project includes comprehensive unit and integration tests with support for multiple container engines.
+
+### Unit Tests
+
+```bash
+# Run all unit tests
+python scripts/run_tests.py unit
+
+# Run with verbose output
+python scripts/run_tests.py unit --verbose
+
+# Run in parallel
+python scripts/run_tests.py unit --parallel
+```
+
+### Integration Tests
+
+Integration tests use containerized environments (Docker or Podman) to test complete workflows:
+
+```bash
+# Run all integration tests (auto-detects Docker/Podman)
+python scripts/run_tests.py integration
+
+# Use Docker explicitly
+CONTAINER_ENGINE=docker python scripts/run_tests.py integration
+
+# Use Podman explicitly  
+CONTAINER_ENGINE=podman python scripts/run_tests.py integration
+
+# Run specific integration test
+python scripts/run_tests.py specific tests/integration/test_flutter_only_integration.py
+```
+
+### Container Engine Support
+
+The integration tests support both Docker and Podman:
+
+- **Docker**: Traditional container engine (default if available)
+- **Podman**: Rootless container alternative with enhanced security
+- **Auto-detection**: Automatically selects available engine
+- **Configuration**: Use `CONTAINER_ENGINE` environment variable to specify
+
+For detailed container configuration, see [Container Engine Configuration](docs/CONTAINER_ENGINE_CONFIGURATION.md).
 
 ### Android Development Workflow
 

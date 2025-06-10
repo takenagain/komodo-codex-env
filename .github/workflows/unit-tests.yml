@@ -1,0 +1,53 @@
+name: Run Tests
+
+on:
+    push:
+        branches: [main, dev]
+    pull_request:
+        branches: [main, dev]
+    workflow_dispatch:
+
+jobs:
+    unit-tests:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python 3.13
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Install Rye
+              uses: eifinger/setup-rye@v4
+              with:
+                  enable-cache: true
+                  cache-prefix: "optional-prefix"
+
+            - name: Sync dependencies with Rye
+              run: rye sync
+
+            - name: Check test discovery
+              run: |
+                  echo "Discovering tests..."
+                  rye run pytest --collect-only -q
+
+            - name: Run tests with pytest-xdist (parallel execution)
+              run: rye run pytest -n 4 --tb=short -v tests/unit
+              env:
+                  CONTAINER_ENGINE: docker
+                  PYTHONPATH: ${{ github.workspace }}/src
+                  DOCKER_HOST: unix:///var/run/docker.sock
+
+            - name: Upload test results
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: test-results
+                  path: |
+                      test-results.xml
+                      htmlcov/
+                  retention-days: 7

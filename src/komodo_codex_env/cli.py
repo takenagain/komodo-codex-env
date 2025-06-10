@@ -186,8 +186,8 @@ def check_deps():
 
 
 @cli.command()
-@click.option("--version", help="Flutter version to check/install")
-def flutter_status():
+@click.option("--version", default=None, help="Flutter version to check/install")
+def flutter_status(version):
     """Check Flutter installation status via FVM."""
     
     config = EnvironmentConfig.from_environment()
